@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"github.com/aanufriev/forum/internal/app/server"
+)
 
 func main() {
-	fmt.Println("Hello, World!")
+	server.StartApiServer()
 }
