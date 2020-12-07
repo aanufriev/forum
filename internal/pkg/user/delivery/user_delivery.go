@@ -2,6 +2,8 @@ package delivery
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/aanufriev/forum/internal/pkg/models"
@@ -49,6 +51,36 @@ func (u UserDelivery) Create(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(user)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func (u UserDelivery) Get(w http.ResponseWriter, r *http.Request) {
+	nickname := mux.Vars(r)["nickname"]
+
+	profile, err := u.userUsecase.Get(nickname)
+	if err != nil {
+
+		if errors.Is(err, user.ErrUserDoesntExists) {
+			w.WriteHeader(http.StatusNotFound)
+			msg := models.ErrorMessage{
+				Message: fmt.Sprintf("Can't find user with id #%v\n", nickname),
+			}
+
+			err = json.NewEncoder(w).Encode(msg)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(profile)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

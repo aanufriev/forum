@@ -31,6 +31,24 @@ func (u UserRepository) Create(model models.User) error {
 	return nil
 }
 
+func (u UserRepository) Get(nickname string) (models.User, error) {
+	var model models.User
+	err := u.db.QueryRow(
+		`SELECT nickname, fullname, email, about FROM users
+		WHERE nickname = $1`,
+		nickname,
+	).Scan(&model.Nickname, &model.Fullname, &model.Email, &model.About)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.User{}, user.ErrUserDoesntExists
+		}
+		return models.User{}, fmt.Errorf("couldn't get user with nickname '%v'. Error: %w", nickname, err)
+	}
+
+	return model, nil
+}
+
 func (u UserRepository) GetUsersWithNicknameAndEmail(nickname, email string) ([]models.User, error) {
 	rows, err := u.db.Query(
 		`SELECT nickname, fullname, email, about FROM users

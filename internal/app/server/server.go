@@ -33,6 +33,7 @@ func StartApiServer() {
 
 	mux := mux.NewRouter()
 	mux.HandleFunc("/user/{nickname}/create", userDelivery.Create).Methods("POST")
+	mux.HandleFunc("/user/{nickname}/profile", userDelivery.Get).Methods("GET")
 
 	mixWithAccessLog := middleware.AccessLog(mux)
 	muxWithCORS := middleware.CORS(mixWithAccessLog)

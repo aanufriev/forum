@@ -7,3 +7,8 @@ type User struct {
 	Email    *string `json:"email"`
 	About    string  `json:"about"`
 }
+
+//easyjson:json
+type ErrorMessage struct {
+	Message string `json:"message"`
+}
