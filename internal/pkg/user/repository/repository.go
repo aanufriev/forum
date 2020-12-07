@@ -73,3 +73,28 @@ func (u UserRepository) GetUsersWithNicknameAndEmail(nickname, email string) ([]
 
 	return users, nil
 }
+
+func (u UserRepository) Update(model models.User) error {
+	result, err := u.db.Exec(
+		`UPDATE users SET fullname = $1, email = $2, about = $3
+		WHERE nickname = $4`,
+		model.Fullname, model.Email, model.About, model.Nickname,
+	)
+
+	if err != nil {
+		if err != sql.ErrConnDone {
+			return user.ErrDataConflict
+		}
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if affected == 0 {
+		return user.ErrUserDoesntExists
+	}
+
+	return nil
+}

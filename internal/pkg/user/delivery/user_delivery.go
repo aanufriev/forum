@@ -86,3 +86,44 @@ func (u UserDelivery) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
+	nickname := mux.Vars(r)["nickname"]
+
+	profile := models.User{}
+	err := json.NewDecoder(r.Body).Decode(&profile)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	profile.Nickname = nickname
+
+	err = u.userUsecase.Update(profile)
+	if err != nil {
+
+		if errors.Is(err, user.ErrUserDoesntExists) {
+			w.WriteHeader(http.StatusNotFound)
+		} else if errors.Is(err, user.ErrDataConflict) {
+			w.WriteHeader(http.StatusConflict)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		msg := models.ErrorMessage{
+			Message: fmt.Sprintf("Can't find user with id #%v\n", nickname),
+		}
+
+		err = json.NewEncoder(w).Encode(msg)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	err = json.NewEncoder(w).Encode(profile)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

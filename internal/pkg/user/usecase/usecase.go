@@ -26,3 +26,7 @@ func (u UserUsecase) Get(nickname string) (models.User, error) {
 func (u UserUsecase) GetUsersWithNicknameAndEmail(nickname, email string) ([]models.User, error) {
 	return u.userRepository.GetUsersWithNicknameAndEmail(nickname, email)
 }
+
+func (u UserUsecase) Update(model models.User) error {
+	return u.userRepository.Update(model)
+}
