@@ -52,7 +52,7 @@ func (u UserRepository) Get(nickname string) (models.User, error) {
 func (u UserRepository) GetUsersWithNicknameAndEmail(nickname, email string) ([]models.User, error) {
 	rows, err := u.db.Query(
 		`SELECT nickname, fullname, email, about FROM users
-		WHERE nickname = $1 OR email = $2`,
+		WHERE lower(nickname) = lower($1) OR lower(email) = lower($2)`,
 		nickname, email,
 	)
 	if err != nil {

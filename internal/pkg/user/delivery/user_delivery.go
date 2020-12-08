@@ -22,6 +22,7 @@ func New(userUsecase user.Usecase) UserDelivery {
 }
 
 func (u UserDelivery) Create(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
 	nickname := mux.Vars(r)["nickname"]
 
 	user := models.User{}
@@ -58,6 +59,7 @@ func (u UserDelivery) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserDelivery) Get(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
 	nickname := mux.Vars(r)["nickname"]
 
 	profile, err := u.userUsecase.Get(nickname)
@@ -88,6 +90,7 @@ func (u UserDelivery) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
 	nickname := mux.Vars(r)["nickname"]
 
 	profile := models.User{}

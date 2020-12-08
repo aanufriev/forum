@@ -4,3 +4,6 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT NOT NULL UNIQUE,
     about TEXT DEFAULT ''
 );
+
+CREATE UNIQUE INDEX email_unique_idx on users (LOWER(email));
+CREATE UNIQUE INDEX nickname_unique_idx on users (LOWER(nicknamel));

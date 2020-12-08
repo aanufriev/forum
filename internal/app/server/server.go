@@ -31,7 +31,7 @@ func StartApiServer() {
 	userUsecase := userUsecase.New(userRepository)
 	userDelivery := userDelivery.New(userUsecase)
 
-	mux := mux.NewRouter()
+	mux := mux.NewRouter().PathPrefix(configs.ApiUrl).Subrouter()
 	mux.HandleFunc("/user/{nickname}/create", userDelivery.Create).Methods("POST")
 	mux.HandleFunc("/user/{nickname}/profile", userDelivery.Get).Methods("GET")
 	mux.HandleFunc("/user/{nickname}/profile", userDelivery.Update).Methods("POST")
