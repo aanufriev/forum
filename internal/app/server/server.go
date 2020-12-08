@@ -6,6 +6,9 @@ import (
 	"net/http"
 
 	"github.com/aanufriev/forum/configs"
+	forumDelivery "github.com/aanufriev/forum/internal/pkg/forum/delivery"
+	forumRepository "github.com/aanufriev/forum/internal/pkg/forum/repository"
+	forumUsecase "github.com/aanufriev/forum/internal/pkg/forum/usecase"
 	"github.com/aanufriev/forum/internal/pkg/middleware"
 	userDelivery "github.com/aanufriev/forum/internal/pkg/user/delivery"
 	userRepository "github.com/aanufriev/forum/internal/pkg/user/repository"
@@ -31,10 +34,17 @@ func StartApiServer() {
 	userUsecase := userUsecase.New(userRepository)
 	userDelivery := userDelivery.New(userUsecase)
 
+	forumRepository := forumRepository.New(db)
+	forumUsecase := forumUsecase.New(forumRepository)
+	forumDelivery := forumDelivery.New(forumUsecase, userRepository)
+
 	mux := mux.NewRouter().PathPrefix(configs.ApiUrl).Subrouter()
+
 	mux.HandleFunc("/user/{nickname}/create", userDelivery.Create).Methods("POST")
 	mux.HandleFunc("/user/{nickname}/profile", userDelivery.Get).Methods("GET")
 	mux.HandleFunc("/user/{nickname}/profile", userDelivery.Update).Methods("POST")
+
+	mux.HandleFunc("/forum/create", forumDelivery.Create).Methods("POST")
 
 	mixWithAccessLog := middleware.AccessLog(mux)
 	muxWithCORS := middleware.CORS(mixWithAccessLog)

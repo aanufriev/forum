@@ -76,6 +76,7 @@ func (u UserDelivery) Get(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+			return
 		}
 
 		w.WriteHeader(http.StatusInternalServerError)
@@ -122,6 +123,7 @@ func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		return
 	}
 
 	err = json.NewEncoder(w).Encode(profile)
