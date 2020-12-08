@@ -102,20 +102,29 @@ func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	profile.Nickname = nickname
 
-	err = u.userUsecase.Update(profile)
+	fullProfile, err := u.userUsecase.Update(profile)
 	if err != nil {
 
+		var msg models.Message
 		if errors.Is(err, user.ErrUserDoesntExists) {
 			w.WriteHeader(http.StatusNotFound)
+			msg = models.Message{
+				Text: fmt.Sprintf("Can't find user with id #%v\n", nickname),
+			}
 		} else if errors.Is(err, user.ErrDataConflict) {
+			emailOwnerNickname, err := u.userUsecase.GetUserNicknameWithEmail(*profile.Email)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
 			w.WriteHeader(http.StatusConflict)
+			msg = models.Message{
+				Text: fmt.Sprintf("This email is already registered by user: %v", emailOwnerNickname),
+			}
 		} else {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
-		}
-
-		msg := models.Message{
-			Text: fmt.Sprintf("Can't find user with id #%v\n", nickname),
 		}
 
 		err = json.NewEncoder(w).Encode(msg)
@@ -126,7 +135,7 @@ func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(profile)
+	err = json.NewEncoder(w).Encode(fullProfile)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

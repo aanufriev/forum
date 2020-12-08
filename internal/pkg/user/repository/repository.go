@@ -74,29 +74,47 @@ func (u UserRepository) GetUsersWithNicknameAndEmail(nickname, email string) ([]
 	return users, nil
 }
 
-func (u UserRepository) Update(model models.User) error {
+func (u UserRepository) Update(model models.User) (models.User, error) {
+	userFromDB, err := u.Get(model.Nickname)
+	if err != nil {
+		return models.User{}, err
+	}
+
+	if model.Fullname == nil {
+		model.Fullname = userFromDB.Fullname
+	}
+
+	if model.Email == nil {
+		model.Email = userFromDB.Email
+	}
+
+	if model.About == nil {
+		model.About = userFromDB.About
+	}
+
 	result, err := u.db.Exec(
 		`UPDATE users SET fullname = $1, email = $2, about = $3
-		WHERE nickname = $4`,
+		WHERE lower(nickname) = lower($4)`,
 		model.Fullname, model.Email, model.About, model.Nickname,
 	)
 
 	if err != nil {
 		if err != sql.ErrConnDone {
-			return user.ErrDataConflict
+			return models.User{}, user.ErrDataConflict
 		}
+		return models.User{}, err
 	}
 
 	affected, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return models.User{}, err
 	}
 
 	if affected == 0 {
-		return user.ErrUserDoesntExists
+		return models.User{}, user.ErrUserDoesntExists
 	}
 
-	return nil
+	return model, nil
 }
 
 func (u UserRepository) CheckIfUserExists(nickname string) error {
@@ -106,4 +124,18 @@ func (u UserRepository) CheckIfUserExists(nickname string) error {
 	).Scan(&nickname)
 
 	return err
+}
+
+func (u UserRepository) GetUserNicknameWithEmail(email string) (string, error) {
+	var nickname string
+	err := u.db.QueryRow(
+		"SELECT nickname FROM users WHERE lower(email) = lower($1)",
+		email,
+	).Scan(&nickname)
+
+	if err != nil {
+		return "", fmt.Errorf(`couldn't get user nickname with email '%v'. Error: %w`, email, err)
+	}
+
+	return nickname, nil
 }

@@ -27,10 +27,14 @@ func (u UserUsecase) GetUsersWithNicknameAndEmail(nickname, email string) ([]mod
 	return u.userRepository.GetUsersWithNicknameAndEmail(nickname, email)
 }
 
-func (u UserUsecase) Update(model models.User) error {
+func (u UserUsecase) Update(model models.User) (models.User, error) {
 	return u.userRepository.Update(model)
 }
 
 func (u UserUsecase) CheckIfUserExists(nickname string) error {
 	return u.userRepository.CheckIfUserExists(nickname)
+}
+
+func (u UserUsecase) GetUserNicknameWithEmail(email string) (string, error) {
+	return u.userRepository.GetUserNicknameWithEmail(email)
 }
