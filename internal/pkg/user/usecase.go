@@ -7,4 +7,5 @@ type Usecase interface {
 	Get(nickname string) (models.User, error)
 	GetUsersWithNicknameAndEmail(nickname, email string) ([]models.User, error)
 	Update(model models.User) error
+	CheckIfUserExists(nickname string) error
 }

@@ -35,7 +35,7 @@ func (u UserRepository) Get(nickname string) (models.User, error) {
 	var model models.User
 	err := u.db.QueryRow(
 		`SELECT nickname, fullname, email, about FROM users
-		WHERE nickname = $1`,
+		WHERE lower(nickname) = lower($1)`,
 		nickname,
 	).Scan(&model.Nickname, &model.Fullname, &model.Email, &model.About)
 
@@ -97,4 +97,13 @@ func (u UserRepository) Update(model models.User) error {
 	}
 
 	return nil
+}
+
+func (u UserRepository) CheckIfUserExists(nickname string) error {
+	err := u.db.QueryRow(
+		"SELECT nickname FROM users WHERE nickname = $1",
+		nickname,
+	).Scan(&nickname)
+
+	return err
 }

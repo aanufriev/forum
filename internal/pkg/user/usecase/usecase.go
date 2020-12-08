@@ -30,3 +30,7 @@ func (u UserUsecase) GetUsersWithNicknameAndEmail(nickname, email string) ([]mod
 func (u UserUsecase) Update(model models.User) error {
 	return u.userRepository.Update(model)
 }
+
+func (u UserUsecase) CheckIfUserExists(nickname string) error {
+	return u.userRepository.CheckIfUserExists(nickname)
+}
