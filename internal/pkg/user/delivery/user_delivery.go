@@ -67,8 +67,8 @@ func (u UserDelivery) Get(w http.ResponseWriter, r *http.Request) {
 
 		if errors.Is(err, user.ErrUserDoesntExists) {
 			w.WriteHeader(http.StatusNotFound)
-			msg := models.ErrorMessage{
-				Message: fmt.Sprintf("Can't find user with id #%v\n", nickname),
+			msg := models.Message{
+				Text: fmt.Sprintf("Can't find user with id #%v\n", nickname),
 			}
 
 			err = json.NewEncoder(w).Encode(msg)
@@ -113,8 +113,8 @@ func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		msg := models.ErrorMessage{
-			Message: fmt.Sprintf("Can't find user with id #%v\n", nickname),
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find user with id #%v\n", nickname),
 		}
 
 		err = json.NewEncoder(w).Encode(msg)
