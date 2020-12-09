@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS threads (
     forum TEXT NOT NULL,
     msg TEXT NOT NULL,
     title TEXT NOT NULL,
+    slug TEXT,
 
     FOREIGN KEY (author) REFERENCES users (nickname),
     FOREIGN KEY (forum) REFERENCES forums (slug)

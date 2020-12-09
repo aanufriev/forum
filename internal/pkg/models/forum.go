@@ -9,10 +9,11 @@ type Forum struct {
 
 //easyjson:json
 type Thread struct {
-	Author  string  `json:"author"`
-	Created *string `json:"created"`
-	Forum   string  `json:"forum"`
 	ID      int     `json:"id"`
-	Message string  `json:"message"`
+	Forum   string  `json:"forum"`
 	Title   string  `json:"title"`
+	Author  string  `json:"author"`
+	Message string  `json:"message"`
+	Slug    *string `json:"slug,omitempty"`
+	Created *string `json:"created,omitempty"`
 }

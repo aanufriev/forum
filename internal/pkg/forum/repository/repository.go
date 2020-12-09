@@ -48,9 +48,9 @@ func (f ForumRepository) Get(slug string) (models.Forum, error) {
 
 func (f ForumRepository) CreateThread(thread *models.Thread) error {
 	err := f.db.QueryRow(
-		`INSERT INTO threads (author, created, forum, msg, title)
-		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		thread.Author, thread.Created, thread.Forum, thread.Message, thread.Title,
+		`INSERT INTO threads (author, created, forum, msg, title, slug)
+		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		thread.Author, thread.Created, thread.Forum, thread.Message, thread.Title, thread.Slug,
 	).Scan(&thread.ID)
 
 	if err != nil {
