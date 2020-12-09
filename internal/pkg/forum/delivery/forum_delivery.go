@@ -80,7 +80,12 @@ func (f ForumDelivery) Get(w http.ResponseWriter, r *http.Request) {
 	slug := mux.Vars(r)["slug"]
 	forum, err := f.forumUsecase.Get(slug)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find forum with slug: %v", slug),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
 		return
 	}
 
