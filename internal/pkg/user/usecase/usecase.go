@@ -31,7 +31,7 @@ func (u UserUsecase) Update(model models.User) (models.User, error) {
 	return u.userRepository.Update(model)
 }
 
-func (u UserUsecase) CheckIfUserExists(nickname string) error {
+func (u UserUsecase) CheckIfUserExists(nickname string) (string, error) {
 	return u.userRepository.CheckIfUserExists(nickname)
 }
 

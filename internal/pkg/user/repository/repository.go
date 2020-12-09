@@ -117,13 +117,13 @@ func (u UserRepository) Update(model models.User) (models.User, error) {
 	return model, nil
 }
 
-func (u UserRepository) CheckIfUserExists(nickname string) error {
+func (u UserRepository) CheckIfUserExists(nickname string) (string, error) {
 	err := u.db.QueryRow(
-		"SELECT nickname FROM users WHERE nickname = $1",
+		"SELECT nickname FROM users WHERE lower(nickname) = lower($1)",
 		nickname,
 	).Scan(&nickname)
 
-	return err
+	return nickname, err
 }
 
 func (u UserRepository) GetUserNicknameWithEmail(email string) (string, error) {

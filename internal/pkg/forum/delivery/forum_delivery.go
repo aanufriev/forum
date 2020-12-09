@@ -33,7 +33,8 @@ func (f ForumDelivery) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = f.userUsecase.CheckIfUserExists(forum.User); err != nil {
+	nickname, err := f.userUsecase.CheckIfUserExists(forum.User)
+	if err != nil {
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find user with id #%v\n", forum.User),
 		}
@@ -44,7 +45,9 @@ func (f ForumDelivery) Create(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		return
 	}
+	forum.User = nickname
 
 	err = f.forumUsecase.Create(forum)
 	if err != nil {
