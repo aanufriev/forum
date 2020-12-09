@@ -22,3 +22,7 @@ func (f ForumUsecase) Create(forum models.Forum) error {
 func (f ForumUsecase) Get(slug string) (models.Forum, error) {
 	return f.forumRepository.Get(slug)
 }
+
+func (f ForumUsecase) CreateThread(thread *models.Thread) error {
+	return f.forumRepository.CreateThread(thread)
+}

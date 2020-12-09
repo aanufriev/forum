@@ -5,4 +5,5 @@ import "github.com/aanufriev/forum/internal/pkg/models"
 type Usecase interface {
 	Create(forum models.Forum) error
 	Get(slug string) (models.Forum, error)
+	CreateThread(model *models.Thread) error
 }

@@ -17,3 +17,15 @@ CREATE TABLE IF NOT EXISTS forums (
 );
 
 CREATE UNIQUE INDEX slug_unique_idx on forums (LOWER(slug));
+
+CREATE TABLE IF NOT EXISTS threads (
+    id SERIAL NOT NULL PRIMARY KEY,
+    author TEXT NOT NULL,
+    created TEXT,
+    forum TEXT NOT NULL,
+    msg TEXT NOT NULL,
+    title TEXT NOT NULL,
+
+    FOREIGN KEY (author) REFERENCES users (nickname),
+    FOREIGN KEY (forum) REFERENCES forums (slug)
+);

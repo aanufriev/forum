@@ -45,3 +45,17 @@ func (f ForumRepository) Get(slug string) (models.Forum, error) {
 
 	return model, nil
 }
+
+func (f ForumRepository) CreateThread(thread *models.Thread) error {
+	err := f.db.QueryRow(
+		`INSERT INTO threads (author, created, forum, msg, title)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		thread.Author, thread.Created, thread.Forum, thread.Message, thread.Title,
+	).Scan(&thread.ID)
+
+	if err != nil {
+		return fmt.Errorf("couldn't create thread. Error: %w", err)
+	}
+
+	return nil
+}

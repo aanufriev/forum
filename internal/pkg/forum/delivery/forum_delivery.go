@@ -95,3 +95,42 @@ func (f ForumDelivery) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (f ForumDelivery) CreateThread(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	thread := &models.Thread{}
+	err := json.NewDecoder(r.Body).Decode(thread)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	nickname, err := f.userUsecase.CheckIfUserExists(thread.Author)
+	if err != nil {
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find user with id #%v\n", thread.Author),
+		}
+
+		w.WriteHeader(http.StatusNotFound)
+		err = json.NewEncoder(w).Encode(msg)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		return
+	}
+	thread.Author = nickname
+
+	err = f.forumUsecase.CreateThread(thread)
+	if err != nil {
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(thread)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
