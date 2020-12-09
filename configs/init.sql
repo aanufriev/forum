@@ -15,3 +15,5 @@ CREATE TABLE IF NOT EXISTS forums (
 
     FOREIGN KEY (user_nickname) REFERENCES users (nickname)
 );
+
+CREATE UNIQUE INDEX slug_unique_idx on forums (LOWER(slug));

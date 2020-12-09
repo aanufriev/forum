@@ -34,11 +34,10 @@ func (f ForumRepository) Create(model models.Forum) error {
 func (f ForumRepository) Get(slug string) (models.Forum, error) {
 	var model models.Forum
 	err := f.db.QueryRow(
-		`SELECT title, user_nickname FROM forums
-		WHERE slug = $1`,
+		`SELECT slug, title, user_nickname FROM forums
+		WHERE lower(slug) = lower($1)`,
 		slug,
-	).Scan(&model.Title, &model.User)
-	model.Slug = slug
+	).Scan(&model.Slug, &model.Title, &model.User)
 
 	if err != nil {
 		return models.Forum{}, fmt.Errorf("couldn't get forum with slug '%v'. Error: %w", slug, err)
