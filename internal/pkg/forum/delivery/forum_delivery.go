@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/aanufriev/forum/configs"
 	"github.com/aanufriev/forum/internal/pkg/forum"
 	"github.com/aanufriev/forum/internal/pkg/models"
 	"github.com/aanufriev/forum/internal/pkg/user"
@@ -129,6 +130,40 @@ func (f ForumDelivery) CreateThread(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(thread)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func (f ForumDelivery) GetThreads(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	slug := mux.Vars(r)["slug"]
+
+	_, err := f.forumUsecase.CheckForum(slug)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find forum by slug: %v", slug),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
+		return
+	}
+
+	limit := r.URL.Query().Get(configs.Limit)
+	desc := r.URL.Query().Get(configs.Desc)
+	since := r.URL.Query().Get(configs.Since)
+
+	threads, err := f.forumUsecase.GetThreads(slug, limit, since, desc)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(threads)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"strconv"
 
 	"github.com/aanufriev/forum/internal/pkg/forum"
 	"github.com/aanufriev/forum/internal/pkg/models"
@@ -58,4 +59,72 @@ func (f ForumRepository) CreateThread(thread *models.Thread) error {
 	}
 
 	return nil
+}
+
+func (f ForumRepository) CheckForum(slug string) (string, error) {
+	err := f.db.QueryRow(
+		"SELECT slug FROM forums WHERE lower(slug) = lower($1)",
+		slug,
+	).Scan(&slug)
+
+	if err != nil {
+		return "", fmt.Errorf("couldn't get forum with slug '%v'. Error: %w", slug, err)
+	}
+
+	return slug, nil
+}
+
+func (f ForumRepository) GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error) {
+	query := `SELECT author, created, forum, id, msg, slug, title FROM threads
+	WHERE lower(forum) = lower($1)`
+
+	args := make([]interface{}, 0, 4)
+	args = append(args, slug)
+
+	var operator string
+	if desc == "" || desc == "false" {
+		operator = ">"
+	} else {
+		operator = "<"
+	}
+
+	if since != "" {
+		query += fmt.Sprintf(" AND created %v= $2", operator)
+		args = append(args, since)
+	}
+
+	if desc == "" || desc == "false" {
+		desc = "ASC"
+	} else {
+		desc = "DESC"
+	}
+	query += fmt.Sprintf(" ORDER BY created %v", desc)
+
+	rows, err := f.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil {
+		return nil, err
+	}
+
+	threads := make([]models.Thread, 0, limitInt)
+	var thread models.Thread
+	var idx int
+	for rows.Next() {
+		idx++
+		if idx == limitInt+1 {
+			break
+		}
+		err = rows.Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
+		if err != nil {
+			return nil, err
+		}
+
+		threads = append(threads, thread)
+	}
+
+	return threads, nil
 }

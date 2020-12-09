@@ -26,3 +26,11 @@ func (f ForumUsecase) Get(slug string) (models.Forum, error) {
 func (f ForumUsecase) CreateThread(thread *models.Thread) error {
 	return f.forumRepository.CreateThread(thread)
 }
+
+func (f ForumUsecase) CheckForum(slug string) (string, error) {
+	return f.forumRepository.CheckForum(slug)
+}
+
+func (f ForumUsecase) GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error) {
+	return f.forumRepository.GetThreads(slug, limit, since, desc)
+}

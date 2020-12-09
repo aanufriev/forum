@@ -21,7 +21,7 @@ CREATE UNIQUE INDEX slug_unique_idx on forums (LOWER(slug));
 CREATE TABLE IF NOT EXISTS threads (
     id SERIAL NOT NULL PRIMARY KEY,
     author TEXT NOT NULL,
-    created TEXT,
+    created TIMESTAMPTZ,
     forum TEXT NOT NULL,
     msg TEXT NOT NULL,
     title TEXT NOT NULL,
