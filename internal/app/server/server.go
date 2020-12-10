@@ -49,6 +49,8 @@ func StartApiServer() {
 	mux.HandleFunc("/forum/{slug}/create", forumDelivery.CreateThread).Methods("POST")
 	mux.HandleFunc("/forum/{slug}/threads", forumDelivery.GetThreads).Methods("GET")
 
+	mux.HandleFunc("/thread/{slug_or_id}/create", forumDelivery.CreatePosts).Methods("POST")
+
 	mixWithAccessLog := middleware.AccessLog(mux)
 	muxWithCORS := middleware.CORS(mixWithAccessLog)
 

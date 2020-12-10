@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 //easyjson:json
 type Forum struct {
 	Slug  string `json:"slug"`
@@ -16,4 +18,16 @@ type Thread struct {
 	Message string  `json:"message"`
 	Slug    *string `json:"slug,omitempty"`
 	Created *string `json:"created,omitempty"`
+}
+
+//easyjson:json
+type Post struct {
+	ID      int       `json:"id"`
+	Author  string    `json:"author"`
+	Message string    `json:"message"`
+	Parent  int       `json:"parent,omitempty"`
+	Forum   string    `json:"forum"`
+	Slug    string    `json:"slug"`
+	Thread  int       `json:"thread"`
+	Created time.Time `json:"created,omitempty"`
 }

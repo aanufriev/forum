@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/aanufriev/forum/configs"
 	"github.com/aanufriev/forum/internal/pkg/forum"
@@ -100,12 +101,15 @@ func (f ForumDelivery) Get(w http.ResponseWriter, r *http.Request) {
 func (f ForumDelivery) CreateThread(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
+	slug := mux.Vars(r)["slug"]
+
 	thread := &models.Thread{}
 	err := json.NewDecoder(r.Body).Decode(thread)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	thread.Forum = slug
 
 	nickname, err := f.userUsecase.CheckIfUserExists(thread.Author)
 	if err != nil {
@@ -125,6 +129,24 @@ func (f ForumDelivery) CreateThread(w http.ResponseWriter, r *http.Request) {
 
 	err = f.forumUsecase.CreateThread(thread)
 	if err != nil {
+		if err == forum.ErrForumDoesntExists {
+			w.WriteHeader(http.StatusNotFound)
+			msg := models.Message{
+				Text: fmt.Sprintf("Can't find thread forum by slug: %v", thread.Forum),
+			}
+
+			_ = json.NewEncoder(w).Encode(msg)
+			return
+		}
+
+		existedThread, err := f.forumUsecase.GetThread(*thread.Slug)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusConflict)
+		_ = json.NewEncoder(w).Encode(existedThread)
 		return
 	}
 
@@ -158,7 +180,6 @@ func (f ForumDelivery) GetThreads(w http.ResponseWriter, r *http.Request) {
 
 	threads, err := f.forumUsecase.GetThreads(slug, limit, since, desc)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -168,4 +189,33 @@ func (f ForumDelivery) GetThreads(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+}
+
+func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	slugOrID := mux.Vars(r)["slug_or_id"]
+
+	posts := []models.Post{}
+	err := json.NewDecoder(r.Body).Decode(&posts)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	created := time.Now()
+
+	for idx := range posts {
+		posts[idx].Created = created
+	}
+
+	posts, err = f.forumUsecase.CreatePosts(slugOrID, posts)
+	if err != nil {
+		// fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(posts)
 }

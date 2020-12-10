@@ -48,7 +48,24 @@ func (f ForumRepository) Get(slug string) (models.Forum, error) {
 }
 
 func (f ForumRepository) CreateThread(thread *models.Thread) error {
+	var forumSlug string
+
 	err := f.db.QueryRow(
+		"SELECT slug FROM forums WHERE lower(slug) = lower($1)",
+		thread.Forum,
+	).Scan(&forumSlug)
+
+	if err == sql.ErrNoRows {
+		return forum.ErrForumDoesntExists
+	}
+
+	if err != nil {
+		return err
+	}
+
+	thread.Forum = forumSlug
+
+	err = f.db.QueryRow(
 		`INSERT INTO threads (author, created, forum, msg, title, slug)
 		VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
 		thread.Author, thread.Created, thread.Forum, thread.Message, thread.Title, thread.Slug,
@@ -127,4 +144,53 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 	}
 
 	return threads, nil
+}
+
+func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) ([]models.Post, error) {
+	var forum string
+	err := f.db.QueryRow(
+		`SELECT f.slug, t.id, t.slug FROM forums AS f
+		JOIN threads AS t
+		ON lower(f.slug) = lower(t.forum)
+		WHERE lower(t.slug) = lower($1) or t.id = $2`,
+		slug, id,
+	).Scan(&forum, &id, &slug)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for idx, post := range posts {
+		posts[idx].Forum = forum
+		if id != 0 {
+			posts[idx].Thread = id
+		} else {
+			posts[idx].Slug = slug
+		}
+		err := f.db.QueryRow(
+			"INSERT INTO posts (author, msg, parent, thread) VALUES ($1, $2, $3, $4) RETURNING id",
+			post.Author, post.Message, post.Parent, post.Thread,
+		).Scan(&posts[idx].ID)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return posts, nil
+}
+
+func (f ForumRepository) GetThread(slug string) (models.Thread, error) {
+	var thread models.Thread
+	err := f.db.QueryRow(
+		`SELECT author, created, forum, id, msg, slug, title FROM threads
+		WHERE lower(slug) = lower($1)`,
+		slug,
+	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
+
+	if err != nil {
+		return models.Thread{}, err
+	}
+
+	return thread, nil
 }

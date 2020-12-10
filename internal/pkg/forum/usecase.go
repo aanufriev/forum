@@ -8,4 +8,6 @@ type Usecase interface {
 	CreateThread(model *models.Thread) error
 	CheckForum(slug string) (string, error)
 	GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error)
+	CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error)
+	GetThread(slug string) (models.Thread, error)
 }

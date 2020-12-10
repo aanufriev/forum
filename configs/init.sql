@@ -30,3 +30,16 @@ CREATE TABLE IF NOT EXISTS threads (
     FOREIGN KEY (author) REFERENCES users (nickname),
     FOREIGN KEY (forum) REFERENCES forums (slug)
 );
+
+CREATE UNIQUE INDEX thread_slug_unique_idx on threads (LOWER(slug));
+
+CREATE TABLE IF NOT EXISTS posts (
+    id SERIAL NOT NULL PRIMARY KEY,
+    author TEXT NOT NULL,
+    msg TEXT NOT NULL,
+    parent INTEGER NOT NULL,
+    thread TEXT NOT NULL,
+    created TIMESTAMPTZ,
+
+    FOREIGN KEY (author) REFERENCES users (nickname)
+);

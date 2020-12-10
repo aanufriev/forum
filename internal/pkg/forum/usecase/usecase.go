@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"strconv"
+
 	"github.com/aanufriev/forum/internal/pkg/forum"
 	"github.com/aanufriev/forum/internal/pkg/models"
 )
@@ -33,4 +35,17 @@ func (f ForumUsecase) CheckForum(slug string) (string, error) {
 
 func (f ForumUsecase) GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error) {
 	return f.forumRepository.GetThreads(slug, limit, since, desc)
+}
+
+func (f ForumUsecase) CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error) {
+	slug := slugOrID
+	id, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		id = 0
+	}
+	return f.forumRepository.CreatePosts(slug, id, posts)
+}
+
+func (f ForumUsecase) GetThread(slug string) (models.Thread, error) {
+	return f.forumRepository.GetThread(slug)
 }
