@@ -7,3 +7,11 @@ type User struct {
 	Email    *string `json:"email,omitempty"`
 	About    *string `json:"about,omitempty"`
 }
+
+//easyjson:json
+type Vote struct {
+	Nickname string `json:"nickname"`
+	Voice    int    `json:"voice"`
+	ID       int    `json:"id"`
+	Slug     string `json:"slug"`
+}

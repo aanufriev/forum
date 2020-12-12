@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS threads (
     msg TEXT NOT NULL,
     title TEXT NOT NULL,
     slug TEXT,
+    votes INTEGER DEFAULT 0,
 
     FOREIGN KEY (author) REFERENCES users (nickname),
     FOREIGN KEY (forum) REFERENCES forums (slug)
@@ -42,4 +43,13 @@ CREATE TABLE IF NOT EXISTS posts (
     created TIMESTAMPTZ,
 
     FOREIGN KEY (author) REFERENCES users (nickname)
+);
+
+CREATE TABLE IF NOT EXISTS thread_vote (
+    thread_slug TEXT,
+    thread_id INTEGER,
+    nickname TEXT NOT NULL,
+    vote INTEGER NOT NULL,
+
+    FOREIGN KEY (nickname) REFERENCES users (nickname)
 );

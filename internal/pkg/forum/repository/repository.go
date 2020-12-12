@@ -194,3 +194,73 @@ func (f ForumRepository) GetThread(slug string) (models.Thread, error) {
 
 	return thread, nil
 }
+
+func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
+	var voteValue int
+	err := f.db.QueryRow(
+		`SELECT DISTINCT tv.vote FROM thread_vote AS tv
+		JOIN threads AS t ON (tv.thread_slug = t.slug OR tv.thread_id = t.id)
+		WHERE lower(tv.nickname) = lower($1) AND (lower(t.slug) = lower($2) OR t.id = $3)`,
+		vote.Nickname, vote.Slug, vote.ID,
+	).Scan(&voteValue)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			_, err = f.db.Exec(
+				"INSERT INTO thread_vote (nickname, thread_slug, thread_id, vote) VALUES($1, $2, $3, $4)",
+				vote.Nickname, vote.Slug, vote.ID, vote.Voice,
+			)
+			fmt.Println("insert vote", vote.Nickname, vote.Voice)
+
+			if err != nil {
+				return models.Thread{}, err
+			}
+		} else {
+			return models.Thread{}, err
+		}
+	}
+
+	if voteValue == vote.Voice {
+		var thread models.Thread
+		err = f.db.QueryRow(
+			`SELECT author, created, forum, id, msg, slug, title, votes FROM threads
+			WHERE lower(slug) = lower($1) OR id = $2`,
+			vote.Slug, vote.ID,
+		).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
+
+		if err != nil {
+			return models.Thread{}, err
+		}
+
+		return thread, nil
+	} else if voteValue != 0 && voteValue != vote.Voice {
+		_, err = f.db.Exec(
+			`UPDATE thread_vote SET vote = $1
+			WHERE lower(nickname) = lower($2) AND (lower(thread_slug) = lower($3) OR thread_id = $4)`,
+			vote.Voice, vote.Nickname, vote.Slug, vote.ID,
+		)
+
+		if err != nil {
+			return models.Thread{}, err
+		}
+		vote.Voice -= voteValue
+	}
+
+	if err != nil {
+		return models.Thread{}, err
+	}
+
+	var thread models.Thread
+	err = f.db.QueryRow(
+		`UPDATE threads SET votes = votes + $1
+		WHERE lower(slug) = lower($2) OR id = $3
+		RETURNING author, created, forum, id, msg, slug, title, votes`,
+		vote.Voice, vote.Slug, vote.ID,
+	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
+
+	if err != nil {
+		return models.Thread{}, err
+	}
+
+	return thread, nil
+}

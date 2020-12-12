@@ -49,3 +49,7 @@ func (f ForumUsecase) CreatePosts(slugOrID string, posts []models.Post) ([]model
 func (f ForumUsecase) GetThread(slug string) (models.Thread, error) {
 	return f.forumRepository.GetThread(slug)
 }
+
+func (f ForumUsecase) Vote(vote models.Vote) (models.Thread, error) {
+	return f.forumRepository.Vote(vote)
+}

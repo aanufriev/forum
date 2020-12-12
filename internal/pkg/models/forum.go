@@ -18,6 +18,7 @@ type Thread struct {
 	Message string  `json:"message"`
 	Slug    *string `json:"slug,omitempty"`
 	Created *string `json:"created,omitempty"`
+	Votes   int     `json:"votes"`
 }
 
 //easyjson:json

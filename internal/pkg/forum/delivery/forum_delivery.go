@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/aanufriev/forum/configs"
@@ -211,11 +212,43 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 
 	posts, err = f.forumUsecase.CreatePosts(slugOrID, posts)
 	if err != nil {
-		// fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(posts)
+}
+
+func (f ForumDelivery) Vote(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	slugOrID := mux.Vars(r)["slug_or_id"]
+
+	vote := models.Vote{}
+	err := json.NewDecoder(r.Body).Decode(&vote)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	vote.Slug = slugOrID
+	id, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		id = 0
+	}
+	vote.ID = id
+
+	thread, err := f.forumUsecase.Vote(vote)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(thread)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }

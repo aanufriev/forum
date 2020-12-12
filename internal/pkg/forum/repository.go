@@ -19,4 +19,5 @@ type Repository interface {
 	GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error)
 	CreatePosts(slug string, id int, posts []models.Post) ([]models.Post, error)
 	GetThread(slug string) (models.Thread, error)
+	Vote(vote models.Vote) (models.Thread, error)
 }
