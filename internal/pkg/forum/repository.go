@@ -18,6 +18,6 @@ type Repository interface {
 	CheckForum(slug string) (string, error)
 	GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error)
 	CreatePosts(slug string, id int, posts []models.Post) ([]models.Post, error)
-	GetThread(slug string) (models.Thread, error)
+	GetThread(slug string, id int) (models.Thread, error)
 	Vote(vote models.Vote) (models.Thread, error)
 }

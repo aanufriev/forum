@@ -50,6 +50,7 @@ func StartApiServer() {
 	mux.HandleFunc("/forum/{slug}/threads", forumDelivery.GetThreads).Methods("GET")
 
 	mux.HandleFunc("/thread/{slug_or_id}/create", forumDelivery.CreatePosts).Methods("POST")
+	mux.HandleFunc("/thread/{slug_or_id}/details", forumDelivery.GetThread).Methods("GET")
 	mux.HandleFunc("/thread/{slug_or_id}/vote", forumDelivery.Vote).Methods("POST")
 
 	mixWithAccessLog := middleware.AccessLog(mux)

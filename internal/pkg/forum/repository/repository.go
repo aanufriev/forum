@@ -180,12 +180,12 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 	return posts, nil
 }
 
-func (f ForumRepository) GetThread(slug string) (models.Thread, error) {
+func (f ForumRepository) GetThread(slug string, id int) (models.Thread, error) {
 	var thread models.Thread
 	err := f.db.QueryRow(
 		`SELECT author, created, forum, id, msg, slug, title FROM threads
-		WHERE lower(slug) = lower($1)`,
-		slug,
+		WHERE lower(slug) = lower($1) or id = $2`,
+		slug, id,
 	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
 
 	if err != nil {

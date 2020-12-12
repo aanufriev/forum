@@ -46,8 +46,13 @@ func (f ForumUsecase) CreatePosts(slugOrID string, posts []models.Post) ([]model
 	return f.forumRepository.CreatePosts(slug, id, posts)
 }
 
-func (f ForumUsecase) GetThread(slug string) (models.Thread, error) {
-	return f.forumRepository.GetThread(slug)
+func (f ForumUsecase) GetThread(slugOrID string) (models.Thread, error) {
+	slug := slugOrID
+	id, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		id = 0
+	}
+	return f.forumRepository.GetThread(slug, id)
 }
 
 func (f ForumUsecase) Vote(vote models.Vote) (models.Thread, error) {

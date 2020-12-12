@@ -220,6 +220,24 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(posts)
 }
 
+func (f ForumDelivery) GetThread(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	slugOrID := mux.Vars(r)["slug_or_id"]
+
+	threads, err := f.forumUsecase.GetThread(slugOrID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(threads)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 func (f ForumDelivery) Vote(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
