@@ -20,4 +20,7 @@ type Repository interface {
 	CreatePosts(slug string, id int, posts []models.Post) ([]models.Post, error)
 	GetThread(slug string, id int) (models.Thread, error)
 	Vote(vote models.Vote) (models.Thread, error)
+	GetPosts(slug string, id int, limit int, order string, since string) ([]models.Post, error)
+	GetPostsTree(slug string, id int, limit int, order string, since string) ([]models.Post, error)
+	GetPostsParentTree(slug string, id int, limit int, order string, since string) ([]models.Post, error)
 }

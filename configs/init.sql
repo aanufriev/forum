@@ -39,8 +39,10 @@ CREATE TABLE IF NOT EXISTS posts (
     author TEXT NOT NULL,
     msg TEXT NOT NULL,
     parent INTEGER NOT NULL,
-    thread TEXT NOT NULL,
+    thread INTEGER NOT NULL,
+    thread_slug TEXT NOT NULL,
     created TIMESTAMPTZ,
+    forum TEXT NOT NULL, 
 
     FOREIGN KEY (author) REFERENCES users (nickname)
 );

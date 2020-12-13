@@ -259,12 +259,44 @@ func (f ForumDelivery) Vote(w http.ResponseWriter, r *http.Request) {
 
 	thread, err := f.forumUsecase.Vote(vote)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(thread)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func (f ForumDelivery) GetPosts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	slugOrID := mux.Vars(r)["slug_or_id"]
+
+	limitParam := r.URL.Query().Get(configs.Limit)
+	limit, err := strconv.Atoi(limitParam)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	sortParam := r.URL.Query().Get(configs.Sort)
+	descParam := r.URL.Query().Get(configs.Desc)
+	if descParam == "" {
+		descParam = "false"
+	}
+
+	sinceParam := r.URL.Query().Get(configs.Since)
+
+	posts, err := f.forumUsecase.GetPosts(slugOrID, limit, sortParam, descParam, sinceParam)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(posts)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -58,3 +58,29 @@ func (f ForumUsecase) GetThread(slugOrID string) (models.Thread, error) {
 func (f ForumUsecase) Vote(vote models.Vote) (models.Thread, error) {
 	return f.forumRepository.Vote(vote)
 }
+
+func (f ForumUsecase) GetPosts(slugOrID string, limit int, sort string, order string, since string) ([]models.Post, error) {
+	slug := slugOrID
+	id, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		id = 0
+	}
+
+	switch order {
+	case "true":
+		order = "DESC"
+	case "false":
+		order = "ASC"
+	}
+
+	switch sort {
+	case "flat":
+		return f.forumRepository.GetPosts(slug, id, limit, order, since)
+	case "tree":
+		return f.forumRepository.GetPostsTree(slug, id, limit, order, since)
+	case "parent_tree":
+		return f.forumRepository.GetPostsParentTree(slug, id, limit, order, since)
+	default:
+		return f.forumRepository.GetPosts(slug, id, limit, order, since)
+	}
+}

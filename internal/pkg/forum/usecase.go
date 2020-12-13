@@ -11,4 +11,5 @@ type Usecase interface {
 	CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error)
 	GetThread(slugOrID string) (models.Thread, error)
 	Vote(vote models.Vote) (models.Thread, error)
+	GetPosts(slugOrID string, limit int, sort string, order string, since string) ([]models.Post, error)
 }

@@ -9,4 +9,5 @@ const (
 	Limit                  = "limit"
 	Desc                   = "desc"
 	Since                  = "since"
+	Sort                   = "sort"
 )

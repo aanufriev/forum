@@ -152,7 +152,7 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 		`SELECT f.slug, t.id, t.slug FROM forums AS f
 		JOIN threads AS t
 		ON lower(f.slug) = lower(t.forum)
-		WHERE lower(t.slug) = lower($1) or t.id = $2`,
+		WHERE lower(t.slug) = lower($1) OR t.id = $2`,
 		slug, id,
 	).Scan(&forum, &id, &slug)
 
@@ -160,16 +160,13 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 		return nil, err
 	}
 
-	for idx, post := range posts {
+	for idx := range posts {
 		posts[idx].Forum = forum
-		if id != 0 {
-			posts[idx].Thread = id
-		} else {
-			posts[idx].Slug = slug
-		}
+		posts[idx].Thread = id
+		posts[idx].Slug = slug
 		err := f.db.QueryRow(
-			"INSERT INTO posts (author, msg, parent, thread) VALUES ($1, $2, $3, $4) RETURNING id",
-			post.Author, post.Message, post.Parent, post.Thread,
+			"INSERT INTO posts (author, msg, parent, thread, thread_slug, created, forum) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Created, posts[idx].Forum,
 		).Scan(&posts[idx].ID)
 
 		if err != nil {
@@ -210,7 +207,6 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 				"INSERT INTO thread_vote (nickname, thread_slug, thread_id, vote) VALUES($1, $2, $3, $4)",
 				vote.Nickname, vote.Slug, vote.ID, vote.Voice,
 			)
-			fmt.Println("insert vote", vote.Nickname, vote.Voice)
 
 			if err != nil {
 				return models.Thread{}, err
@@ -263,4 +259,258 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 	}
 
 	return thread, nil
+}
+
+func (f ForumRepository) GetPosts(slug string, id int, limit int, order string, since string) ([]models.Post, error) {
+	var sinceCond string
+	if since != "" {
+		if order == "DESC" {
+			sinceCond = fmt.Sprintf("AND id < %v", since)
+		} else {
+			sinceCond = fmt.Sprintf("AND id > %v", since)
+		}
+	}
+	rows, err := f.db.Query(
+		fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
+		WHERE (lower(thread_slug) = lower($1) OR thread = $2) %v
+		ORDER BY id %v`, sinceCond, order),
+		slug, id,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	posts := make([]models.Post, 0, limit)
+	post := models.Post{}
+	idx := 0
+	for rows.Next() {
+		if idx == limit {
+			break
+		}
+		idx++
+		err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
+		if err != nil {
+			return nil, err
+		}
+
+		posts = append(posts, post)
+	}
+
+	return posts, nil
+}
+
+func (f ForumRepository) GetPostsTree(slug string, id int, limit int, order string, since string) ([]models.Post, error) {
+	rows, err := f.db.Query(
+		fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
+		WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0
+		ORDER BY id %v`, order),
+		slug, id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	resultPosts := make([]models.Post, 0, limit)
+
+	postsQueue := make([]models.Post, 0, limit)
+	post := models.Post{}
+	for rows.Next() {
+		err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
+		if err != nil {
+			return nil, err
+		}
+
+		resultPosts = append(resultPosts, post)
+		postsQueue = append(postsQueue, post)
+	}
+
+	for i := 0; i < len(postsQueue); i++ {
+		children := make([]models.Post, 0, limit)
+
+		rows, err := f.db.Query(
+			fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
+			WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = $3
+			ORDER BY id %v`, order),
+			slug, id, postsQueue[i].ID,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
+			if err != nil {
+				return nil, err
+			}
+
+			children = append(children, post)
+		}
+
+		if len(children) == 0 {
+			continue
+		}
+
+		for j := 0; j < len(children); j++ {
+			postsQueue = append(postsQueue, models.Post{})
+			resultPosts = append(resultPosts, models.Post{})
+		}
+
+		for k := 0; k < len(resultPosts); k++ {
+			if resultPosts[k] == postsQueue[i] {
+				if order == "DESC" {
+					copy(resultPosts[k+len(children):], resultPosts[k:])
+					copy(resultPosts[k:k+len(children)], children)
+				}
+
+				if order == "ASC" {
+					copy(resultPosts[i+1+len(children):], resultPosts[i+1:])
+					copy(resultPosts[i+1:i+1+len(children)], children)
+				}
+				break
+			}
+		}
+
+		copy(postsQueue[i+1+len(children):], postsQueue[i+1:])
+		copy(postsQueue[i+1:i+1+len(children)], children)
+
+	}
+
+	var sinceParam int
+	if since != "" {
+		sinceParam, err = strconv.Atoi(since)
+		if err != nil {
+			return nil, err
+		}
+
+		for idx, post := range resultPosts {
+			if post.ID == sinceParam {
+				if len(resultPosts) <= idx+limit {
+					return resultPosts[idx+1:], nil
+				} else {
+					return resultPosts[idx+1 : idx+1+limit], nil
+				}
+			}
+		}
+	}
+
+	if len(resultPosts) > limit {
+		return resultPosts[:limit], nil
+	}
+	return resultPosts, nil
+}
+
+func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, order string, since string) ([]models.Post, error) {
+	rows, err := f.db.Query(
+		fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
+		WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0
+		ORDER BY id %v`, order),
+		slug, id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	resultPosts := make([]models.Post, 0, limit)
+
+	postsQueue := make([]models.Post, 0, limit)
+	post := models.Post{}
+	for rows.Next() {
+		err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
+		if err != nil {
+			return nil, err
+		}
+
+		resultPosts = append(resultPosts, post)
+		postsQueue = append(postsQueue, post)
+	}
+
+	for i := 0; i < len(postsQueue); i++ {
+		children := make([]models.Post, 0, limit)
+
+		rows, err := f.db.Query(
+			`SELECT author, created, forum, id, msg, parent, thread FROM posts
+			WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = $3
+			ORDER BY id ASC`,
+			slug, id, postsQueue[i].ID,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
+			if err != nil {
+				return nil, err
+			}
+
+			children = append(children, post)
+		}
+
+		if len(children) == 0 {
+			continue
+		}
+
+		for j := 0; j < len(children); j++ {
+			postsQueue = append(postsQueue, models.Post{})
+			resultPosts = append(resultPosts, models.Post{})
+		}
+
+		for k := 0; k < len(resultPosts); k++ {
+			if resultPosts[k] == postsQueue[i] {
+				copy(resultPosts[i+1+len(children):], resultPosts[i+1:])
+				copy(resultPosts[i+1:i+1+len(children)], children)
+				break
+			}
+		}
+
+		copy(postsQueue[i+1+len(children):], postsQueue[i+1:])
+		copy(postsQueue[i+1:i+1+len(children)], children)
+
+	}
+
+	var sinceParam int
+	if since != "" {
+		sinceParam, err = strconv.Atoi(since)
+		if err != nil {
+			return nil, err
+		}
+
+		if resultPosts[len(resultPosts)-1].ID == sinceParam {
+			return []models.Post{}, nil
+		}
+
+		for idx, post := range resultPosts {
+			if post.ID == sinceParam {
+				for j := idx; j < len(resultPosts); j++ {
+					if resultPosts[j].Parent == 0 {
+						resultPosts = resultPosts[j:]
+						break
+					}
+				}
+				break
+			}
+		}
+	}
+
+	limitCount := 0
+	for m, post := range resultPosts {
+		if post.Parent == 0 {
+			limitCount++
+		}
+
+		if limitCount == limit+1 {
+			resultPosts = resultPosts[:m]
+			break
+		}
+	}
+
+	return resultPosts, nil
 }
