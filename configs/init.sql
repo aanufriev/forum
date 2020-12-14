@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS forums (
     slug TEXT NOT NULL UNIQUE PRIMARY KEY,
     title TEXT NOT NULL,
     user_nickname TEXT NOT NULL,
+    thread_count INTEGER DEFAULT 0,
+    post_count INTEGER DEFAULT 0,
 
     FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );

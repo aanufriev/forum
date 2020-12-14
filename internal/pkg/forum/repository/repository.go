@@ -35,10 +35,10 @@ func (f ForumRepository) Create(model models.Forum) error {
 func (f ForumRepository) Get(slug string) (models.Forum, error) {
 	var model models.Forum
 	err := f.db.QueryRow(
-		`SELECT slug, title, user_nickname FROM forums
+		`SELECT slug, title, user_nickname, thread_count, post_count FROM forums
 		WHERE lower(slug) = lower($1)`,
 		slug,
-	).Scan(&model.Slug, &model.Title, &model.User)
+	).Scan(&model.Slug, &model.Title, &model.User, &model.Threads, &model.Posts)
 
 	if err != nil {
 		return models.Forum{}, fmt.Errorf("couldn't get forum with slug '%v'. Error: %w", slug, err)
@@ -73,6 +73,15 @@ func (f ForumRepository) CreateThread(thread *models.Thread) error {
 
 	if err != nil {
 		return fmt.Errorf("couldn't create thread. Error: %w", err)
+	}
+
+	_, err = f.db.Exec(
+		"UPDATE forums SET thread_count = thread_count + 1 WHERE slug = $1",
+		forumSlug,
+	)
+
+	if err != nil {
+		return fmt.Errorf("couldn't update thread count in forum. Error: %w", err)
 	}
 
 	return nil
@@ -172,6 +181,15 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	_, err = f.db.Exec(
+		"UPDATE forums SET post_count = post_count + $1 WHERE slug = $2",
+		len(posts), forum,
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("couldn't update posts count in forum. Error: %w", err)
 	}
 
 	return posts, nil
