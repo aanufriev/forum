@@ -302,3 +302,28 @@ func (f ForumDelivery) GetPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (f ForumDelivery) UpdateThread(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	slugOrID := mux.Vars(r)["slug_or_id"]
+
+	thread := models.Thread{}
+	err := json.NewDecoder(r.Body).Decode(&thread)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	thread, err = f.forumUsecase.UpdateThread(slugOrID, thread)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(thread)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

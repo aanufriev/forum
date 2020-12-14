@@ -23,4 +23,5 @@ type Repository interface {
 	GetPosts(slug string, id int, limit int, order string, since string) ([]models.Post, error)
 	GetPostsTree(slug string, id int, limit int, order string, since string) ([]models.Post, error)
 	GetPostsParentTree(slug string, id int, limit int, order string, since string) ([]models.Post, error)
+	UpdateThread(thread models.Thread) (models.Thread, error)
 }

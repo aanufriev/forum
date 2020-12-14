@@ -6,14 +6,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE UNIQUE INDEX email_unique_idx on users (LOWER(email));
-CREATE UNIQUE INDEX nickname_unique_idx on users (LOWER(nicknamel));
+CREATE UNIQUE INDEX nickname_unique_idx on users (LOWER(nickname));
 
 CREATE TABLE IF NOT EXISTS forums (
     slug TEXT NOT NULL UNIQUE PRIMARY KEY,
     title TEXT NOT NULL,
     user_nickname TEXT NOT NULL,
 
-    FOREIGN KEY (user_nickname) REFERENCES users (nickname)
+    FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );
 
 CREATE UNIQUE INDEX slug_unique_idx on forums (LOWER(slug));
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS threads (
     slug TEXT,
     votes INTEGER DEFAULT 0,
 
-    FOREIGN KEY (author) REFERENCES users (nickname),
-    FOREIGN KEY (forum) REFERENCES forums (slug)
+    FOREIGN KEY (author) REFERENCES users (nickname) ON UPDATE CASCADE,
+    FOREIGN KEY (forum) REFERENCES forums (slug) ON UPDATE CASCADE
 );
 
 CREATE UNIQUE INDEX thread_slug_unique_idx on threads (LOWER(slug));
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS posts (
     created TIMESTAMPTZ,
     forum TEXT NOT NULL, 
 
-    FOREIGN KEY (author) REFERENCES users (nickname)
+    FOREIGN KEY (author) REFERENCES users (nickname) ON UPDATE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS thread_vote (
@@ -53,5 +53,5 @@ CREATE TABLE IF NOT EXISTS thread_vote (
     nickname TEXT NOT NULL,
     vote INTEGER NOT NULL,
 
-    FOREIGN KEY (nickname) REFERENCES users (nickname)
+    FOREIGN KEY (nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );

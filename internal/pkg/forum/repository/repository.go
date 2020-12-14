@@ -514,3 +514,18 @@ func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, orde
 
 	return resultPosts, nil
 }
+
+func (f ForumRepository) UpdateThread(thread models.Thread) (models.Thread, error) {
+	err := f.db.QueryRow(
+		`UPDATE threads SET title = $1, msg = $2
+		WHERE lower(slug) = lower($3) OR id = $4
+		RETURNING author, created, forum, id, msg, slug, title`,
+		thread.Title, thread.Message, thread.Slug, thread.ID,
+	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
+
+	if err != nil {
+		return models.Thread{}, err
+	}
+
+	return thread, nil
+}

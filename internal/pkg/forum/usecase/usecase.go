@@ -84,3 +84,14 @@ func (f ForumUsecase) GetPosts(slugOrID string, limit int, sort string, order st
 		return f.forumRepository.GetPosts(slug, id, limit, order, since)
 	}
 }
+
+func (f ForumUsecase) UpdateThread(slugOrID string, thread models.Thread) (models.Thread, error) {
+	thread.Slug = &slugOrID
+	id, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		id = 0
+	}
+
+	thread.ID = id
+	return f.forumRepository.UpdateThread(thread)
+}
