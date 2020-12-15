@@ -327,3 +327,47 @@ func (f ForumDelivery) UpdateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (f ForumDelivery) GetUsersFromForum(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	slug := mux.Vars(r)["slug"]
+
+	_, err := f.forumUsecase.CheckForum(slug)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find forum by slug: %v", slug),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
+		return
+	}
+
+	limitParam := r.URL.Query().Get(configs.Limit)
+	limit, err := strconv.Atoi(limitParam)
+	if err != nil && limitParam != "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	descParam := r.URL.Query().Get(configs.Desc)
+	if descParam == "" {
+		descParam = "false"
+	}
+
+	sinceParam := r.URL.Query().Get(configs.Since)
+
+	users, err := f.forumUsecase.GetUsersFromForum(slug, limit, sinceParam, descParam)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(users)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

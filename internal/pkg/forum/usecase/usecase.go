@@ -95,3 +95,13 @@ func (f ForumUsecase) UpdateThread(slugOrID string, thread models.Thread) (model
 	thread.ID = id
 	return f.forumRepository.UpdateThread(thread)
 }
+
+func (f ForumUsecase) GetUsersFromForum(slug string, limit int, since string, desc string) ([]models.User, error) {
+	switch desc {
+	case "true":
+		desc = "DESC"
+	case "false":
+		desc = "ASC"
+	}
+	return f.forumRepository.GetUsersFromForum(slug, limit, since, desc)
+}

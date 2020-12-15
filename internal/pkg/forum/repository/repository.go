@@ -198,10 +198,10 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 func (f ForumRepository) GetThread(slug string, id int) (models.Thread, error) {
 	var thread models.Thread
 	err := f.db.QueryRow(
-		`SELECT author, created, forum, id, msg, slug, title FROM threads
+		`SELECT author, created, forum, id, msg, slug, title, votes FROM threads
 		WHERE lower(slug) = lower($1) or id = $2`,
 		slug, id,
-	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
+	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
 
 	if err != nil {
 		return models.Thread{}, err
@@ -546,4 +546,65 @@ func (f ForumRepository) UpdateThread(thread models.Thread) (models.Thread, erro
 	}
 
 	return thread, nil
+}
+
+func (f ForumRepository) GetUsersFromForum(slug string, limit int, since string, desc string) ([]models.User, error) {
+	var (
+		rows *sql.Rows
+		err  error
+	)
+
+	var compare string
+	if desc == "DESC" {
+		compare = "<"
+	} else {
+		compare = ">"
+	}
+
+	if since != "" {
+		rows, err = f.db.Query(
+			fmt.Sprintf(`SELECT u.about, u.email, u.fullname, u.nickname FROM
+			(SELECT DISTINCT author FROM threads WHERE lower(forum) = lower($1)
+			UNION
+			SELECT DISTINCT author FROM posts WHERE lower(forum) = lower($1)) AS tp
+			JOIN users AS u ON tp.author = u.nickname
+			WHERE lower(u.nickname) %v lower($2)
+			ORDER BY lower(u.nickname) %v`, compare, desc),
+			slug, since,
+		)
+	} else {
+		rows, err = f.db.Query(
+			fmt.Sprintf(`SELECT u.about, u.email, u.fullname, u.nickname FROM
+			(SELECT DISTINCT author FROM threads WHERE lower(forum) = lower($1)
+			UNION
+			SELECT DISTINCT author FROM posts WHERE lower(forum) = lower($1)) AS tp
+			JOIN users AS u ON tp.author = u.nickname
+			ORDER BY lower(u.nickname) %v`, desc),
+			slug,
+		)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	i := 0
+	users := make([]models.User, 0, 10)
+	user := models.User{}
+	for rows.Next() {
+		if i == limit && limit != 0 {
+			break
+		}
+		i++
+
+		err = rows.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)
+		if err != nil {
+			return nil, err
+		}
+
+		users = append(users, user)
+	}
+
+	return users, nil
 }

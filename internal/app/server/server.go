@@ -48,6 +48,7 @@ func StartApiServer() {
 	mux.HandleFunc("/forum/{slug}/details", forumDelivery.Get).Methods("GET")
 	mux.HandleFunc("/forum/{slug}/create", forumDelivery.CreateThread).Methods("POST")
 	mux.HandleFunc("/forum/{slug}/threads", forumDelivery.GetThreads).Methods("GET")
+	mux.HandleFunc("/forum/{slug}/users", forumDelivery.GetUsersFromForum).Methods("GET")
 
 	mux.HandleFunc("/thread/{slug_or_id}/create", forumDelivery.CreatePosts).Methods("POST")
 	mux.HandleFunc("/thread/{slug_or_id}/details", forumDelivery.GetThread).Methods("GET")

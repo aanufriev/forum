@@ -13,4 +13,5 @@ type Usecase interface {
 	Vote(vote models.Vote) (models.Thread, error)
 	GetPosts(slugOrID string, limit int, sort string, order string, since string) ([]models.Post, error)
 	UpdateThread(slugOrID string, thread models.Thread) (models.Thread, error)
+	GetUsersFromForum(slug string, limit int, since string, desc string) ([]models.User, error)
 }
