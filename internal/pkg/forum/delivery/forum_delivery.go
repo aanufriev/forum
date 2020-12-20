@@ -208,11 +208,41 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 
 	for idx := range posts {
 		posts[idx].Created = created
+		_, err = f.userUsecase.CheckIfUserExists(posts[idx].Author)
+		if err != nil {
+			msg := models.Message{
+				Text: fmt.Sprintf("Can't find post author by nickname: %v", posts[idx].Author),
+			}
+
+			w.WriteHeader(http.StatusNotFound)
+			err = json.NewEncoder(w).Encode(msg)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+	}
+
+	_, err = f.forumUsecase.GetThread(slugOrID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find post thread by id: %v", slugOrID),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
+		return
 	}
 
 	posts, err = f.forumUsecase.CreatePosts(slugOrID, posts)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusConflict)
+		msg := models.Message{
+			Text: "Parent post was created in another thread",
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
 		return
 	}
 

@@ -169,6 +169,17 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 		return nil, err
 	}
 
+	if len(posts) > 0 && posts[0].Parent != 0 {
+		parentPost, err := f.GetPostDetaild(strconv.Itoa(posts[0].Parent))
+		if err != nil {
+			return nil, err
+		}
+
+		if parentPost.Thread != id {
+			return nil, fmt.Errorf("wrong parent")
+		}
+	}
+
 	for idx := range posts {
 		posts[idx].Forum = forum
 		posts[idx].Thread = id
@@ -612,9 +623,9 @@ func (f ForumRepository) GetUsersFromForum(slug string, limit int, since string,
 func (f ForumRepository) GetPostDetaild(id string) (models.Post, error) {
 	var post models.Post
 	err := f.db.QueryRow(
-		"SELECT author, created, forum, id, msg, thread, isEdited FROM posts WHERE id = $1",
+		"SELECT author, created, forum, id, msg, thread, isEdited, parent FROM posts WHERE id = $1",
 		id,
-	).Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Thread, &post.IsEdited)
+	).Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Thread, &post.IsEdited, &post.Parent)
 
 	if err != nil {
 		return models.Post{}, err
@@ -626,9 +637,9 @@ func (f ForumRepository) GetPostDetaild(id string) (models.Post, error) {
 func (f ForumRepository) UpdatePost(post models.Post) (models.Post, error) {
 	err := f.db.QueryRow(
 		`UPDATE posts SET msg = $1, isEdited = true WHERE id = $2
-		RETURNING author, created, forum, id, msg, thread, isEdited`,
+		RETURNING author, created, forum, id, msg, thread, isEdited, parent`,
 		post.Message, post.ID,
-	).Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Thread, &post.IsEdited)
+	).Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Thread, &post.IsEdited, &post.Parent)
 
 	if err != nil {
 		return models.Post{}, err
