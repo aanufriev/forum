@@ -608,3 +608,17 @@ func (f ForumRepository) GetUsersFromForum(slug string, limit int, since string,
 
 	return users, nil
 }
+
+func (f ForumRepository) GetPostDetaild(id string) (models.Post, error) {
+	var post models.Post
+	err := f.db.QueryRow(
+		"SELECT author, created, forum, id, msg, thread FROM posts WHERE id = $1",
+		id,
+	).Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Thread)
+
+	if err != nil {
+		return models.Post{}, err
+	}
+
+	return post, nil
+}

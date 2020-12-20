@@ -371,3 +371,24 @@ func (f ForumDelivery) GetUsersFromForum(w http.ResponseWriter, r *http.Request)
 		return
 	}
 }
+
+func (f ForumDelivery) GetPostDetaild(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	id := mux.Vars(r)["id"]
+
+	post, err := f.forumUsecase.GetPostDetaild(id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	postWrapper := models.PostWrapper{
+		Post: post,
+	}
+
+	err = json.NewEncoder(w).Encode(postWrapper)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

@@ -34,3 +34,7 @@ type Post struct {
 	Thread  int       `json:"thread"`
 	Created time.Time `json:"created,omitempty"`
 }
+
+type PostWrapper struct {
+	Post Post `json:"post"`
+}
