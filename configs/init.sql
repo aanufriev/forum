@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS posts (
     thread INTEGER NOT NULL,
     thread_slug TEXT NOT NULL,
     created TIMESTAMPTZ,
-    forum TEXT NOT NULL, 
+    forum TEXT NOT NULL,
+    isEdited BOOLEAN DEFAULT false,
 
     FOREIGN KEY (author) REFERENCES users (nickname) ON UPDATE CASCADE
 );

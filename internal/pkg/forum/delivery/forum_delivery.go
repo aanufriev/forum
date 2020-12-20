@@ -392,3 +392,35 @@ func (f ForumDelivery) GetPostDetaild(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (f ForumDelivery) UpdatePost(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	id := mux.Vars(r)["id"]
+
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	post := models.Post{}
+	err = json.NewDecoder(r.Body).Decode(&post)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	post.ID = idInt
+
+	post, err = f.forumUsecase.UpdatePost(post)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(post)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

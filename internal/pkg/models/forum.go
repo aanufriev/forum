@@ -25,16 +25,18 @@ type Thread struct {
 
 //easyjson:json
 type Post struct {
-	ID      int       `json:"id"`
-	Author  string    `json:"author"`
-	Message string    `json:"message"`
-	Parent  int       `json:"parent,omitempty"`
-	Forum   string    `json:"forum"`
-	Slug    string    `json:"slug"`
-	Thread  int       `json:"thread"`
-	Created time.Time `json:"created,omitempty"`
+	ID       int       `json:"id"`
+	Author   string    `json:"author"`
+	Message  string    `json:"message"`
+	Parent   int       `json:"parent,omitempty"`
+	Forum    string    `json:"forum"`
+	Slug     string    `json:"slug"`
+	Thread   int       `json:"thread"`
+	Created  time.Time `json:"created,omitempty"`
+	IsEdited bool      `json:"isEdited"`
 }
 
+//easyjson:json
 type PostWrapper struct {
 	Post Post `json:"post"`
 }

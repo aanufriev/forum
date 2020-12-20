@@ -109,3 +109,7 @@ func (f ForumUsecase) GetUsersFromForum(slug string, limit int, since string, de
 func (f ForumUsecase) GetPostDetaild(id string) (models.Post, error) {
 	return f.forumRepository.GetPostDetaild(id)
 }
+
+func (f ForumUsecase) UpdatePost(post models.Post) (models.Post, error) {
+	return f.forumRepository.UpdatePost(post)
+}

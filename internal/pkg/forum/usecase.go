@@ -15,4 +15,5 @@ type Usecase interface {
 	UpdateThread(slugOrID string, thread models.Thread) (models.Thread, error)
 	GetUsersFromForum(slug string, limit int, since string, desc string) ([]models.User, error)
 	GetPostDetaild(id string) (models.Post, error)
+	UpdatePost(post models.Post) (models.Post, error)
 }

@@ -612,9 +612,23 @@ func (f ForumRepository) GetUsersFromForum(slug string, limit int, since string,
 func (f ForumRepository) GetPostDetaild(id string) (models.Post, error) {
 	var post models.Post
 	err := f.db.QueryRow(
-		"SELECT author, created, forum, id, msg, thread FROM posts WHERE id = $1",
+		"SELECT author, created, forum, id, msg, thread, isEdited FROM posts WHERE id = $1",
 		id,
-	).Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Thread)
+	).Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Thread, &post.IsEdited)
+
+	if err != nil {
+		return models.Post{}, err
+	}
+
+	return post, nil
+}
+
+func (f ForumRepository) UpdatePost(post models.Post) (models.Post, error) {
+	err := f.db.QueryRow(
+		`UPDATE posts SET msg = $1, isEdited = true WHERE id = $2
+		RETURNING author, created, forum, id, msg, thread, isEdited`,
+		post.Message, post.ID,
+	).Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Thread, &post.IsEdited)
 
 	if err != nil {
 		return models.Post{}, err
