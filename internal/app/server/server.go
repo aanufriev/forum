@@ -59,6 +59,9 @@ func StartApiServer() {
 	mux.HandleFunc("/post/{id}/details", forumDelivery.GetPostDetaild).Methods("GET")
 	mux.HandleFunc("/post/{id}/details", forumDelivery.UpdatePost).Methods("POST")
 
+	mux.HandleFunc("/service/clear", forumDelivery.ClearService).Methods("POST")
+	mux.HandleFunc("/service/status", forumDelivery.GetServiceInfo).Methods("GET")
+
 	mixWithAccessLog := middleware.AccessLog(mux)
 	muxWithCORS := middleware.CORS(mixWithAccessLog)
 

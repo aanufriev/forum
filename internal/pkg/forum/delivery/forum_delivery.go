@@ -454,3 +454,28 @@ func (f ForumDelivery) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func (f ForumDelivery) ClearService(w http.ResponseWriter, r *http.Request) {
+	err := f.forumUsecase.ClearService()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
+func (f ForumDelivery) GetServiceInfo(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-Type", "application/json")
+
+	info, err := f.forumUsecase.GetServiceInfo()
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(info)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}

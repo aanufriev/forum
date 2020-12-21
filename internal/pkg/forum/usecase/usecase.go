@@ -113,3 +113,11 @@ func (f ForumUsecase) GetPostDetaild(id string) (models.Post, error) {
 func (f ForumUsecase) UpdatePost(post models.Post) (models.Post, error) {
 	return f.forumRepository.UpdatePost(post)
 }
+
+func (f ForumUsecase) ClearService() error {
+	return f.forumRepository.ClearService()
+}
+
+func (f ForumUsecase) GetServiceInfo() (models.ServiceInfo, error) {
+	return f.forumRepository.GetServiceInfo()
+}

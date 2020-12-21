@@ -647,3 +647,52 @@ func (f ForumRepository) UpdatePost(post models.Post) (models.Post, error) {
 
 	return post, nil
 }
+
+func (f ForumRepository) ClearService() error {
+	_, err := f.db.Exec(
+		"TRUNCATE TABLE users, forums, threads, thread_vote, posts",
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f ForumRepository) GetServiceInfo() (models.ServiceInfo, error) {
+	var info models.ServiceInfo
+	err := f.db.QueryRow(
+		"SELECT count(*) FROM forums",
+	).Scan(&info.Forum)
+
+	if err != nil {
+		return models.ServiceInfo{}, err
+	}
+
+	err = f.db.QueryRow(
+		"SELECT count(*) FROM threads",
+	).Scan(&info.Thread)
+
+	if err != nil {
+		return models.ServiceInfo{}, err
+	}
+
+	err = f.db.QueryRow(
+		"SELECT count(*) FROM posts",
+	).Scan(&info.Post)
+
+	if err != nil {
+		return models.ServiceInfo{}, err
+	}
+
+	err = f.db.QueryRow(
+		"SELECT count(*) FROM users",
+	).Scan(&info.User)
+
+	if err != nil {
+		return models.ServiceInfo{}, err
+	}
+
+	return info, nil
+}
