@@ -37,8 +37,11 @@ type Post struct {
 }
 
 //easyjson:json
-type PostWrapper struct {
-	Post Post `json:"post"`
+type PostInfo struct {
+	Post   Post    `json:"post"`
+	Author *User   `json:"author,omitempty"`
+	Thread *Thread `json:"thread,omitempty"`
+	Forum  *Forum  `json:"forum,omitempty"`
 }
 
 //easyjson:json

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aanufriev/forum/configs"
@@ -458,11 +459,59 @@ func (f ForumDelivery) GetPostDetails(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(msg)
 		return
 	}
-	postWrapper := models.PostWrapper{
+
+	postInfo := models.PostInfo{
 		Post: post,
 	}
 
-	err = json.NewEncoder(w).Encode(postWrapper)
+	related := r.URL.Query().Get("related")
+	if strings.Contains(related, "user") {
+		author, err := f.userUsecase.Get(post.Author)
+		if err != nil {
+			msg := models.Message{
+				Text: fmt.Sprintf("Can't find user with id #%v\n", post.Author),
+			}
+
+			w.WriteHeader(http.StatusNotFound)
+			err = json.NewEncoder(w).Encode(msg)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+		postInfo.Author = &author
+	}
+
+	if strings.Contains(related, "thread") {
+		thread, err := f.forumUsecase.GetThread(strconv.Itoa(post.Thread))
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			msg := models.Message{
+				Text: fmt.Sprintf("Can't find thread forum by slug: %v", post.Thread),
+			}
+
+			_ = json.NewEncoder(w).Encode(msg)
+			return
+		}
+		postInfo.Thread = &thread
+	}
+
+	if strings.Contains(related, "forum") {
+		forum, err := f.forumUsecase.Get(post.Forum)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			msg := models.Message{
+				Text: fmt.Sprintf("Can't find forum by slug: %v", post.Forum),
+			}
+
+			_ = json.NewEncoder(w).Encode(msg)
+			return
+		}
+		postInfo.Forum = &forum
+	}
+
+	err = json.NewEncoder(w).Encode(postInfo)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
