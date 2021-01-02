@@ -696,3 +696,12 @@ func (f ForumRepository) GetServiceInfo() (models.ServiceInfo, error) {
 
 	return info, nil
 }
+
+func (f ForumRepository) CheckThread(slug string, id int) error {
+	err := f.db.QueryRow(
+		"SELECT id FROM threads WHERE lower(slug) = lower($1) OR id = $2",
+		slug, id,
+	).Scan(&id)
+
+	return err
+}

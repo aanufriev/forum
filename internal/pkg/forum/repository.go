@@ -29,4 +29,5 @@ type Repository interface {
 	UpdatePost(post models.Post) (models.Post, error)
 	ClearService() error
 	GetServiceInfo() (models.ServiceInfo, error)
+	CheckThread(slug string, id int) error
 }

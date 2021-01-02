@@ -121,3 +121,13 @@ func (f ForumUsecase) ClearService() error {
 func (f ForumUsecase) GetServiceInfo() (models.ServiceInfo, error) {
 	return f.forumRepository.GetServiceInfo()
 }
+
+func (f ForumUsecase) CheckThread(slugOrID string) error {
+	slug := slugOrID
+	id, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		id = 0
+	}
+
+	return f.forumRepository.CheckThread(slug, id)
+}

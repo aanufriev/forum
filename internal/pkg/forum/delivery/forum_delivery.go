@@ -257,7 +257,12 @@ func (f ForumDelivery) GetThread(w http.ResponseWriter, r *http.Request) {
 
 	threads, err := f.forumUsecase.GetThread(slugOrID)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
 		return
 	}
 
@@ -289,7 +294,12 @@ func (f ForumDelivery) Vote(w http.ResponseWriter, r *http.Request) {
 
 	thread, err := f.forumUsecase.Vote(vote)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
 		return
 	}
 
@@ -304,6 +314,18 @@ func (f ForumDelivery) GetPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
 	slugOrID := mux.Vars(r)["slug_or_id"]
+
+	err := f.forumUsecase.CheckThread(slugOrID)
+	if err != nil {
+		fmt.Println(err)
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
+		return
+	}
 
 	limitParam := r.URL.Query().Get(configs.Limit)
 	limit, err := strconv.Atoi(limitParam)
@@ -338,17 +360,36 @@ func (f ForumDelivery) UpdateThread(w http.ResponseWriter, r *http.Request) {
 
 	slugOrID := mux.Vars(r)["slug_or_id"]
 
+	err := f.forumUsecase.CheckThread(slugOrID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
+		return
+	}
+
 	thread := models.Thread{}
-	err := json.NewDecoder(r.Body).Decode(&thread)
+	err = json.NewDecoder(r.Body).Decode(&thread)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	thread, err = f.forumUsecase.UpdateThread(slugOrID, thread)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if thread.Title == "" && thread.Message == "" {
+		thread, err = f.forumUsecase.GetThread(slugOrID)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	} else {
+		thread, err = f.forumUsecase.UpdateThread(slugOrID, thread)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	err = json.NewEncoder(w).Encode(thread)

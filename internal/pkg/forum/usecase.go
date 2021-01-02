@@ -18,4 +18,5 @@ type Usecase interface {
 	UpdatePost(post models.Post) (models.Post, error)
 	ClearService() error
 	GetServiceInfo() (models.ServiceInfo, error)
+	CheckThread(slugOrID string) error
 }
