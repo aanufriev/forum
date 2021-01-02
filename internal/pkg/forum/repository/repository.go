@@ -651,6 +651,9 @@ func (f ForumRepository) GetPostDetails(id string) (models.Post, error) {
 
 func (f ForumRepository) UpdatePost(post models.Post) (models.Post, error) {
 	postDB, err := f.GetPostDetails(strconv.Itoa(post.ID))
+	if err != nil {
+		return models.Post{}, err
+	}
 
 	if post.Message == postDB.Message {
 		return postDB, nil
