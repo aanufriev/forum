@@ -535,11 +535,36 @@ func (f ForumDelivery) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
+	if post.Message == "" {
+		post, err := f.forumUsecase.GetPostDetails(id)
+		if err != nil {
+			w.WriteHeader(http.StatusNotFound)
+			msg := models.Message{
+				Text: fmt.Sprintf("Can't find post with id: %v", id),
+			}
+
+			_ = json.NewEncoder(w).Encode(msg)
+			return
+		}
+
+		err = json.NewEncoder(w).Encode(post)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		return
+	}
 	post.ID = idInt
 
 	post, err = f.forumUsecase.UpdatePost(post)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find post with id: %v", id),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
 		return
 	}
 

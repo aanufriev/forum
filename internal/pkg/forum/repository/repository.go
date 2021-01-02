@@ -650,7 +650,13 @@ func (f ForumRepository) GetPostDetails(id string) (models.Post, error) {
 }
 
 func (f ForumRepository) UpdatePost(post models.Post) (models.Post, error) {
-	err := f.db.QueryRow(
+	postDB, err := f.GetPostDetails(strconv.Itoa(post.ID))
+
+	if post.Message == postDB.Message {
+		return postDB, nil
+	}
+
+	err = f.db.QueryRow(
 		`UPDATE posts SET msg = $1, isEdited = true WHERE id = $2
 		RETURNING author, created, forum, id, msg, thread, isEdited, parent`,
 		post.Message, post.ID,
