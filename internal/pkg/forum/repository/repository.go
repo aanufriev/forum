@@ -170,7 +170,7 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 	}
 
 	if len(posts) > 0 && posts[0].Parent != 0 {
-		parentPost, err := f.GetPostDetaild(strconv.Itoa(posts[0].Parent))
+		parentPost, err := f.GetPostDetails(strconv.Itoa(posts[0].Parent))
 		if err != nil {
 			return nil, err
 		}
@@ -635,7 +635,7 @@ func (f ForumRepository) GetUsersFromForum(slug string, limit int, since string,
 	return users, nil
 }
 
-func (f ForumRepository) GetPostDetaild(id string) (models.Post, error) {
+func (f ForumRepository) GetPostDetails(id string) (models.Post, error) {
 	var post models.Post
 	err := f.db.QueryRow(
 		"SELECT author, created, forum, id, msg, thread, isEdited, parent FROM posts WHERE id = $1",

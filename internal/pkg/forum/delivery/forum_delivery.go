@@ -443,14 +443,19 @@ func (f ForumDelivery) GetUsersFromForum(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (f ForumDelivery) GetPostDetaild(w http.ResponseWriter, r *http.Request) {
+func (f ForumDelivery) GetPostDetails(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
 	id := mux.Vars(r)["id"]
 
-	post, err := f.forumUsecase.GetPostDetaild(id)
+	post, err := f.forumUsecase.GetPostDetails(id)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find post with id: %v", id),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
 		return
 	}
 	postWrapper := models.PostWrapper{

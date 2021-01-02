@@ -56,7 +56,7 @@ func StartApiServer() {
 	mux.HandleFunc("/thread/{slug_or_id}/posts", forumDelivery.GetPosts).Methods("GET")
 	mux.HandleFunc("/thread/{slug_or_id}/details", forumDelivery.UpdateThread).Methods("POST")
 
-	mux.HandleFunc("/post/{id}/details", forumDelivery.GetPostDetaild).Methods("GET")
+	mux.HandleFunc("/post/{id}/details", forumDelivery.GetPostDetails).Methods("GET")
 	mux.HandleFunc("/post/{id}/details", forumDelivery.UpdatePost).Methods("POST")
 
 	mux.HandleFunc("/service/clear", forumDelivery.ClearService).Methods("POST")

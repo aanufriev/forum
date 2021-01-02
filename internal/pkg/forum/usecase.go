@@ -14,7 +14,7 @@ type Usecase interface {
 	GetPosts(slugOrID string, limit int, sort string, order string, since string) ([]models.Post, error)
 	UpdateThread(slugOrID string, thread models.Thread) (models.Thread, error)
 	GetUsersFromForum(slug string, limit int, since string, desc string) ([]models.User, error)
-	GetPostDetaild(id string) (models.Post, error)
+	GetPostDetails(id string) (models.Post, error)
 	UpdatePost(post models.Post) (models.Post, error)
 	ClearService() error
 	GetServiceInfo() (models.ServiceInfo, error)
