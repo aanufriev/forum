@@ -545,6 +545,21 @@ func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, orde
 }
 
 func (f ForumRepository) UpdateThread(thread models.Thread) (models.Thread, error) {
+	if thread.Title == "" || thread.Message == "" {
+		oldThread, err := f.GetThread(*thread.Slug, thread.ID)
+		if err != nil {
+			return models.Thread{}, nil
+		}
+
+		if thread.Title == "" {
+			thread.Title = oldThread.Title
+		}
+
+		if thread.Message == "" {
+			thread.Message = oldThread.Message
+		}
+	}
+
 	err := f.db.QueryRow(
 		`UPDATE threads SET title = $1, msg = $2
 		WHERE lower(slug) = lower($3) OR id = $4
