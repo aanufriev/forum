@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS threads (
     forum TEXT NOT NULL,
     msg TEXT NOT NULL,
     title TEXT NOT NULL,
-    slug TEXT,
+    slug TEXT DEFAULT '',
     votes INTEGER DEFAULT 0,
 
     FOREIGN KEY (author) REFERENCES users (nickname) ON UPDATE CASCADE,

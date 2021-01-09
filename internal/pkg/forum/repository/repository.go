@@ -157,13 +157,14 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 
 func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) ([]models.Post, error) {
 	var forum string
+	var slugNull sql.NullString
 	err := f.db.QueryRow(
 		`SELECT f.slug, t.id, t.slug FROM forums AS f
 		JOIN threads AS t
 		ON lower(f.slug) = lower(t.forum)
 		WHERE lower(t.slug) = lower($1) OR t.id = $2`,
 		slug, id,
-	).Scan(&forum, &id, &slug)
+	).Scan(&forum, &id, &slugNull)
 
 	if err != nil {
 		return nil, err
@@ -183,7 +184,7 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 	for idx := range posts {
 		posts[idx].Forum = forum
 		posts[idx].Thread = id
-		posts[idx].Slug = slug
+		posts[idx].Slug = slugNull.String
 		err := f.db.QueryRow(
 			"INSERT INTO posts (author, msg, parent, thread, thread_slug, created, forum) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
 			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Created, posts[idx].Forum,
