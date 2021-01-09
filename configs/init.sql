@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS threads (
 );
 
 CREATE UNIQUE INDEX thread_slug_unique_idx on threads (LOWER(slug));
+CREATE UNIQUE INDEX thread_id_index ON threads (id);
 
 CREATE TABLE IF NOT EXISTS posts (
     id SERIAL NOT NULL PRIMARY KEY,
@@ -51,10 +52,11 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 
 CREATE TABLE IF NOT EXISTS thread_vote (
-    thread_slug TEXT,
     thread_id INTEGER,
     nickname TEXT NOT NULL,
     vote INTEGER NOT NULL,
 
     FOREIGN KEY (nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );
+
+CREATE UNIQUE INDEX votes_user_thread ON thread_vote (thread_id, nickname);

@@ -222,19 +222,27 @@ func (f ForumRepository) GetThread(slug string, id int) (models.Thread, error) {
 }
 
 func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
+	if vote.ID == 0 {
+		threadID, err := f.GetThreadIDBySlug(vote.Slug)
+		if err != nil {
+			return models.Thread{}, err
+		}
+
+		vote.ID = threadID
+	}
+
 	var voteValue int
 	err := f.db.QueryRow(
-		`SELECT DISTINCT tv.vote FROM thread_vote AS tv
-		JOIN threads AS t ON (tv.thread_slug = t.slug OR tv.thread_id = t.id)
-		WHERE lower(tv.nickname) = lower($1) AND (lower(t.slug) = lower($2) OR t.id = $3)`,
-		vote.Nickname, vote.Slug, vote.ID,
+		`SELECT vote FROM thread_vote
+		WHERE lower(nickname) = lower($1) AND thread_id = $2`,
+		vote.Nickname, vote.ID,
 	).Scan(&voteValue)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			_, err = f.db.Exec(
-				"INSERT INTO thread_vote (nickname, thread_slug, thread_id, vote) VALUES($1, $2, $3, $4)",
-				vote.Nickname, vote.Slug, vote.ID, vote.Voice,
+				"INSERT INTO thread_vote (nickname, thread_id, vote) VALUES($1, $2, $3)",
+				vote.Nickname, vote.ID, vote.Voice,
 			)
 
 			if err != nil {
@@ -261,8 +269,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 	} else if voteValue != 0 && voteValue != vote.Voice {
 		_, err = f.db.Exec(
 			`UPDATE thread_vote SET vote = $1
-			WHERE lower(nickname) = lower($2) AND (lower(thread_slug) = lower($3) OR thread_id = $4)`,
-			vote.Voice, vote.Nickname, vote.Slug, vote.ID,
+			WHERE lower(nickname) = lower($2) AND thread_id = $3`,
+			vote.Voice, vote.Nickname, vote.ID,
 		)
 
 		if err != nil {
@@ -728,4 +736,18 @@ func (f ForumRepository) CheckThread(slug string, id int) error {
 	).Scan(&id)
 
 	return err
+}
+
+func (f ForumRepository) GetThreadIDBySlug(slug string) (int, error) {
+	var threadID int
+	err := f.db.QueryRow(
+		"SELECT id FROM threads WHERE lower(slug) = lower($1)",
+		slug,
+	).Scan(&threadID)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return threadID, nil
 }
