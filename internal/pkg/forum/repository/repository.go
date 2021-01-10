@@ -257,8 +257,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 		var thread models.Thread
 		err = f.db.QueryRow(
 			`SELECT author, created, forum, id, msg, slug, title, votes FROM threads
-			WHERE lower(slug) = lower($1) OR id = $2`,
-			vote.Slug, vote.ID,
+			WHERE id = $1`,
+			vote.ID,
 		).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
 
 		if err != nil {
@@ -286,9 +286,9 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 	var thread models.Thread
 	err = f.db.QueryRow(
 		`UPDATE threads SET votes = votes + $1
-		WHERE lower(slug) = lower($2) OR id = $3
+		WHERE id = $2
 		RETURNING author, created, forum, id, msg, slug, title, votes`,
-		vote.Voice, vote.Slug, vote.ID,
+		vote.Voice, vote.ID,
 	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
 
 	if err != nil {
