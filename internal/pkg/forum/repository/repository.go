@@ -158,11 +158,10 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) ([]models.Post, error) {
 	var forum string
 	var slugNull sql.NullString
+
 	err := f.db.QueryRow(
-		`SELECT f.slug, t.id, t.slug FROM forums AS f
-		JOIN threads AS t
-		ON lower(f.slug) = lower(t.forum)
-		WHERE lower(t.slug) = lower($1) OR t.id = $2`,
+		`SELECT forum, id, slug FROM threads
+		WHERE lower(slug) = lower($1) OR id = $2`,
 		slug, id,
 	).Scan(&forum, &id, &slugNull)
 
