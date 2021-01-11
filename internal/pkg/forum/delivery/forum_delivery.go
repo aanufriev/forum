@@ -205,6 +205,23 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = f.forumUsecase.CheckThread(slugOrID)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find post thread by id: %v", slugOrID),
+		}
+
+		_ = json.NewEncoder(w).Encode(msg)
+		return
+	}
+
+	if len(posts) == 0 {
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(posts)
+		return
+	}
+
 	created := time.Now()
 
 	for idx := range posts {
@@ -223,17 +240,6 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-	}
-
-	err = f.forumUsecase.CheckThread(slugOrID)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		msg := models.Message{
-			Text: fmt.Sprintf("Can't find post thread by id: %v", slugOrID),
-		}
-
-		_ = json.NewEncoder(w).Encode(msg)
-		return
 	}
 
 	posts, err = f.forumUsecase.CreatePosts(slugOrID, posts)

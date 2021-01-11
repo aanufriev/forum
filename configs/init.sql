@@ -45,7 +45,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS posts (
     parent INTEGER NOT NULL,
     thread INTEGER NOT NULL,
     thread_slug TEXT NOT NULL,
-    created TIMESTAMPTZ,
+    created TIMESTAMPTZ DEFAULT current_timestamp,
     forum TEXT NOT NULL,
     isEdited BOOLEAN DEFAULT false,
 

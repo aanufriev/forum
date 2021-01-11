@@ -180,18 +180,34 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 		}
 	}
 
+	query := "INSERT INTO posts (author, msg, parent, thread, thread_slug, forum) VALUES "
 	for idx := range posts {
 		posts[idx].Forum = forum
 		posts[idx].Thread = id
 		posts[idx].Slug = slugNull.String
-		err := f.db.QueryRow(
-			"INSERT INTO posts (author, msg, parent, thread, thread_slug, created, forum) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
-			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Created, posts[idx].Forum,
-		).Scan(&posts[idx].ID)
+		query += fmt.Sprintf(
+			"('%v', '%v', %v, %v, '%v', '%v'),",
+			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Forum,
+		)
+	}
 
+	query = query[:len(query)-1]
+	query += " RETURNING id, created"
+	fmt.Println("QUERY: ", query)
+
+	rows, err := f.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	idx := 0
+	for rows.Next() {
+		err := rows.Scan(&posts[idx].ID, &posts[idx].Created)
 		if err != nil {
 			return nil, err
 		}
+
+		idx++
 	}
 
 	_, err = f.db.Exec(
