@@ -222,27 +222,23 @@ func (f ForumRepository) GetThread(slug string, id int) (models.Thread, error) {
 }
 
 func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
-	if vote.ID == 0 {
-		threadID, err := f.GetThreadIDBySlug(vote.Slug)
-		if err != nil {
-			return models.Thread{}, err
-		}
-
-		vote.ID = threadID
+	thread, err := f.GetThread(vote.Slug, vote.ID)
+	if err != nil {
+		return models.Thread{}, err
 	}
 
 	var voteValue int
-	err := f.db.QueryRow(
+	err = f.db.QueryRow(
 		`SELECT vote FROM thread_vote
 		WHERE lower(nickname) = lower($1) AND thread_id = $2`,
-		vote.Nickname, vote.ID,
+		vote.Nickname, thread.ID,
 	).Scan(&voteValue)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
 			_, err = f.db.Exec(
 				"INSERT INTO thread_vote (nickname, thread_id, vote) VALUES($1, $2, $3)",
-				vote.Nickname, vote.ID, vote.Voice,
+				vote.Nickname, thread.ID, vote.Voice,
 			)
 
 			if err != nil {
@@ -254,23 +250,12 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 	}
 
 	if voteValue == vote.Voice {
-		var thread models.Thread
-		err = f.db.QueryRow(
-			`SELECT author, created, forum, id, msg, slug, title, votes FROM threads
-			WHERE id = $1`,
-			vote.ID,
-		).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
-
-		if err != nil {
-			return models.Thread{}, err
-		}
-
 		return thread, nil
 	} else if voteValue != 0 && voteValue != vote.Voice {
 		_, err = f.db.Exec(
 			`UPDATE thread_vote SET vote = $1
 			WHERE lower(nickname) = lower($2) AND thread_id = $3`,
-			vote.Voice, vote.Nickname, vote.ID,
+			vote.Voice, vote.Nickname, thread.ID,
 		)
 
 		if err != nil {
@@ -279,21 +264,7 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 		vote.Voice -= voteValue
 	}
 
-	if err != nil {
-		return models.Thread{}, err
-	}
-
-	var thread models.Thread
-	err = f.db.QueryRow(
-		`UPDATE threads SET votes = votes + $1
-		WHERE id = $2
-		RETURNING author, created, forum, id, msg, slug, title, votes`,
-		vote.Voice, vote.ID,
-	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
-
-	if err != nil {
-		return models.Thread{}, err
-	}
+	thread.Votes += vote.Voice
 
 	return thread, nil
 }
