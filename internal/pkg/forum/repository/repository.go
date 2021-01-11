@@ -243,6 +243,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 		return models.Thread{}, err
 	}
 
+	thread.Votes = thread.Votes + vote.Voice
+
 	var voteValue int
 	err = f.db.QueryRow(
 		`SELECT vote FROM thread_vote
@@ -250,37 +252,34 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 		vote.Nickname, thread.ID,
 	).Scan(&voteValue)
 
-	if err != nil {
-		if err == sql.ErrNoRows {
-			_, err = f.db.Exec(
-				"INSERT INTO thread_vote (nickname, thread_id, vote) VALUES($1, $2, $3)",
-				vote.Nickname, thread.ID, vote.Voice,
-			)
-
-			if err != nil {
-				return models.Thread{}, err
-			}
-		} else {
-			return models.Thread{}, err
-		}
+	if err != nil && err != sql.ErrNoRows {
+		return models.Thread{}, err
 	}
 
-	if voteValue == vote.Voice {
-		return thread, nil
-	} else if voteValue != 0 && voteValue != vote.Voice {
+	if err == sql.ErrNoRows {
 		_, err = f.db.Exec(
-			`UPDATE thread_vote SET vote = $1
-			WHERE lower(nickname) = lower($2) AND thread_id = $3`,
-			vote.Voice, vote.Nickname, thread.ID,
+			"INSERT INTO thread_vote (nickname, thread_id, vote) VALUES($1, $2, $3)",
+			vote.Nickname, thread.ID, vote.Voice,
 		)
 
 		if err != nil {
 			return models.Thread{}, err
 		}
-		vote.Voice -= voteValue
+
+		return thread, nil
 	}
 
-	thread.Votes += vote.Voice
+	thread.Votes = thread.Votes - voteValue
+
+	_, err = f.db.Exec(
+		`UPDATE thread_vote SET vote = $1
+		WHERE lower(nickname) = lower($2) AND thread_id = $3`,
+		vote.Voice, vote.Nickname, thread.ID,
+	)
+
+	if err != nil {
+		return models.Thread{}, err
+	}
 
 	return thread, nil
 }
