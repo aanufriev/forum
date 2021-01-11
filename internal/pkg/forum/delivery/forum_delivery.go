@@ -225,7 +225,7 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err = f.forumUsecase.GetThread(slugOrID)
+	err = f.forumUsecase.CheckThread(slugOrID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		msg := models.Message{
