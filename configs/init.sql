@@ -63,7 +63,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS thread_vote (
 
 CREATE INDEX votes_user_thread ON thread_vote (thread_id, LOWER(nickname));
 
-CREATE FUNCTION add_votes_to_thread() RETURNS TRIGGER AS
+CREATE OR REPLACE FUNCTION add_votes_to_thread() RETURNS TRIGGER AS
 $add_votes_to_thread$
 BEGIN
     UPDATE threads

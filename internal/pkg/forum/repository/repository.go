@@ -101,7 +101,7 @@ func (f ForumRepository) CheckForum(slug string) (string, error) {
 }
 
 func (f ForumRepository) GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error) {
-	query := `SELECT author, created, forum, id, msg, slug, title FROM threads
+	query := `SELECT author, created, forum, id, msg, slug, title, votes FROM threads
 	WHERE lower(forum) = lower($1)`
 
 	args := make([]interface{}, 0, 4)
@@ -144,7 +144,7 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 		if idx == limitInt+1 {
 			break
 		}
-		err = rows.Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
+		err = rows.Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
 		if err != nil {
 			return nil, err
 		}
@@ -243,8 +243,6 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 		return models.Thread{}, err
 	}
 
-	thread.Votes = thread.Votes + vote.Voice
-
 	var voteValue int
 	err = f.db.QueryRow(
 		`SELECT vote FROM thread_vote
@@ -266,10 +264,15 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 			return models.Thread{}, err
 		}
 
+		thread.Votes += vote.Voice
 		return thread, nil
 	}
 
-	thread.Votes = thread.Votes - voteValue
+	if voteValue == vote.Voice {
+		return thread, nil
+	}
+
+	thread.Votes = thread.Votes - voteValue + vote.Voice
 
 	_, err = f.db.Exec(
 		`UPDATE thread_vote SET vote = $1
