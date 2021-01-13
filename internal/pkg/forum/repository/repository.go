@@ -180,43 +180,20 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 		}
 	}
 
-	query := "INSERT INTO posts (author, msg, parent, thread, thread_slug, forum) VALUES "
 	for idx := range posts {
 		posts[idx].Forum = forum
 		posts[idx].Thread = id
 		posts[idx].Slug = slugNull.String
-		query += fmt.Sprintf(
-			"('%v', '%v', %v, %v, '%v', '%v'),",
-			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Forum,
-		)
-	}
 
-	query = query[:len(query)-1]
-	query += " RETURNING id, created"
-	fmt.Println("QUERY: ", query)
+		err := f.db.QueryRow(`
+			INSERT INTO posts (author, msg, parent, thread, thread_slug, forum, created)
+			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Forum, posts[idx].Created,
+		).Scan(&posts[idx].ID)
 
-	rows, err := f.db.Query(query)
-	if err != nil {
-		return nil, err
-	}
-
-	idx := 0
-	for rows.Next() {
-		err := rows.Scan(&posts[idx].ID, &posts[idx].Created)
 		if err != nil {
 			return nil, err
 		}
-
-		idx++
-	}
-
-	_, err = f.db.Exec(
-		"UPDATE forums SET post_count = post_count + $1 WHERE slug = $2",
-		len(posts), forum,
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("couldn't update posts count in forum. Error: %w", err)
 	}
 
 	return posts, nil
@@ -328,217 +305,136 @@ func (f ForumRepository) GetPosts(slug string, id int, limit int, order string, 
 }
 
 func (f ForumRepository) GetPostsTree(slug string, id int, limit int, order string, since string) ([]models.Post, error) {
-	rows, err := f.db.Query(
-		fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
-		WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0
-		ORDER BY id %v`, order),
-		slug, id,
-	)
+	var rows *sql.Rows
+	var err error
+
+	var desc bool
+	if order == "DESC" {
+		desc = true
+	} else {
+		desc = false
+	}
+
+	if since == "" {
+		if desc {
+			rows, err = f.db.Query(
+				`SELECT author, created, forum, id, msg, parent, thread FROM posts
+				WHERE (lower(thread_slug) = lower($1) OR thread = $2) ORDER BY path DESC, id  DESC LIMIT $3;`,
+				slug, id, limit,
+			)
+		} else {
+			rows, err = f.db.Query(
+				`SELECT author, created, forum, id, msg, parent, thread FROM posts
+				WHERE (lower(thread_slug) = lower($1) OR thread = $2) ORDER BY path ASC, id  ASC LIMIT $3;`,
+				slug, id, limit,
+			)
+		}
+	} else {
+		if desc {
+			rows, err = f.db.Query(
+				`SELECT author, created, forum, id, msg, parent, thread FROM posts
+				WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND PATH < (SELECT path FROM posts WHERE id = $3)
+				ORDER BY path DESC, id  DESC LIMIT $4;`,
+				slug, id, since, limit,
+			)
+		} else {
+			rows, err = f.db.Query(
+				`SELECT author, created, forum, id, msg, parent, thread FROM posts
+				WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND PATH > (SELECT path FROM posts WHERE id = $3)
+				ORDER BY path ASC, id  ASC LIMIT $4;`,
+				slug, id, since, limit,
+			)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
-	resultPosts := make([]models.Post, 0, limit)
-
-	postsQueue := make([]models.Post, 0, limit)
-	post := models.Post{}
+	posts := make([]models.Post, 0)
+	var post models.Post
 	for rows.Next() {
-		err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
-		if err != nil {
-			return nil, err
-		}
-
-		resultPosts = append(resultPosts, post)
-		postsQueue = append(postsQueue, post)
-	}
-
-	for i := 0; i < len(postsQueue); i++ {
-		children := make([]models.Post, 0, limit)
-
-		rows, err := f.db.Query(
-			fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
-			WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = $3
-			ORDER BY id %v`, order),
-			slug, id, postsQueue[i].ID,
+		err = rows.Scan(
+			&post.Author, &post.Created, &post.Forum, &post.ID,
+			&post.Message, &post.Parent, &post.Thread,
 		)
-
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
-			if err != nil {
-				return nil, err
-			}
-
-			children = append(children, post)
-		}
-
-		if len(children) == 0 {
-			continue
-		}
-
-		for j := 0; j < len(children); j++ {
-			postsQueue = append(postsQueue, models.Post{})
-			resultPosts = append(resultPosts, models.Post{})
-		}
-
-		for k := 0; k < len(resultPosts); k++ {
-			if resultPosts[k] == postsQueue[i] {
-				if order == "DESC" {
-					copy(resultPosts[k+len(children):], resultPosts[k:])
-					copy(resultPosts[k:k+len(children)], children)
-				}
-
-				if order == "ASC" {
-					copy(resultPosts[i+1+len(children):], resultPosts[i+1:])
-					copy(resultPosts[i+1:i+1+len(children)], children)
-				}
-				break
-			}
-		}
-
-		copy(postsQueue[i+1+len(children):], postsQueue[i+1:])
-		copy(postsQueue[i+1:i+1+len(children)], children)
-
-	}
-
-	var sinceParam int
-	if since != "" {
-		sinceParam, err = strconv.Atoi(since)
 		if err != nil {
 			return nil, err
 		}
 
-		for idx, post := range resultPosts {
-			if post.ID == sinceParam {
-				if len(resultPosts) <= idx+limit {
-					return resultPosts[idx+1:], nil
-				} else {
-					return resultPosts[idx+1 : idx+1+limit], nil
-				}
-			}
-		}
+		posts = append(posts, post)
 	}
 
-	if len(resultPosts) > limit {
-		return resultPosts[:limit], nil
-	}
-	return resultPosts, nil
+	return posts, nil
 }
 
 func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, order string, since string) ([]models.Post, error) {
-	rows, err := f.db.Query(
-		fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
-		WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0
-		ORDER BY id %v`, order),
-		slug, id,
-	)
+	var rows *sql.Rows
+	var err error
+
+	var desc bool
+	if order == "DESC" {
+		desc = true
+	} else {
+		desc = false
+	}
+
+	if since == "" {
+		if desc {
+			rows, err = f.db.Query(
+				`SELECT author, created, forum, id, msg, parent, thread FROM posts
+				WHERE path[1] IN (SELECT id FROM posts WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0 ORDER BY id DESC LIMIT $3)
+				ORDER BY path[1] DESC, path, id;`,
+				slug, id, limit,
+			)
+		} else {
+			rows, err = f.db.Query(
+				`SELECT author, created, forum, id, msg, parent, thread FROM posts
+				WHERE path[1] IN (SELECT id FROM posts WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0 ORDER BY id LIMIT $3)
+				ORDER BY path, id;`,
+				slug, id, limit,
+			)
+		}
+	} else {
+		if desc {
+			rows, err = f.db.Query(
+				`SELECT author, created, forum, id, msg, parent, thread FROM posts
+				WHERE path[1] IN (SELECT id FROM posts WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0 AND path[1] <
+				(SELECT path[1] FROM posts WHERE id = $3) ORDER BY id DESC LIMIT $4) ORDER BY path[1] DESC, path, id;`,
+				slug, id, since, limit,
+			)
+		} else {
+			rows, err = f.db.Query(
+				`SELECT author, created, forum, id, msg, parent, thread FROM posts
+				WHERE path[1] IN (SELECT id FROM posts WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0 AND path[1] >
+				(SELECT path[1] FROM posts WHERE id = $3) ORDER BY id ASC LIMIT $4) ORDER BY path, id;`,
+				slug, id, since, limit,
+			)
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
-	resultPosts := make([]models.Post, 0, limit)
-
-	postsQueue := make([]models.Post, 0, limit)
-	post := models.Post{}
+	posts := make([]models.Post, 0)
+	var post models.Post
 	for rows.Next() {
-		err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
-		if err != nil {
-			return nil, err
-		}
-
-		resultPosts = append(resultPosts, post)
-		postsQueue = append(postsQueue, post)
-	}
-
-	for i := 0; i < len(postsQueue); i++ {
-		children := make([]models.Post, 0, limit)
-
-		rows, err := f.db.Query(
-			`SELECT author, created, forum, id, msg, parent, thread FROM posts
-			WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = $3
-			ORDER BY id ASC`,
-			slug, id, postsQueue[i].ID,
+		err = rows.Scan(
+			&post.Author, &post.Created, &post.Forum, &post.ID,
+			&post.Message, &post.Parent, &post.Thread,
 		)
-
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
-			if err != nil {
-				return nil, err
-			}
-
-			children = append(children, post)
-		}
-
-		if len(children) == 0 {
-			continue
-		}
-
-		for j := 0; j < len(children); j++ {
-			postsQueue = append(postsQueue, models.Post{})
-			resultPosts = append(resultPosts, models.Post{})
-		}
-
-		for k := 0; k < len(resultPosts); k++ {
-			if resultPosts[k] == postsQueue[i] {
-				copy(resultPosts[i+1+len(children):], resultPosts[i+1:])
-				copy(resultPosts[i+1:i+1+len(children)], children)
-				break
-			}
-		}
-
-		copy(postsQueue[i+1+len(children):], postsQueue[i+1:])
-		copy(postsQueue[i+1:i+1+len(children)], children)
-
-	}
-
-	var sinceParam int
-	if since != "" {
-		sinceParam, err = strconv.Atoi(since)
 		if err != nil {
 			return nil, err
 		}
 
-		if resultPosts[len(resultPosts)-1].ID == sinceParam {
-			return []models.Post{}, nil
-		}
-
-		for idx, post := range resultPosts {
-			if post.ID == sinceParam {
-				for j := idx; j < len(resultPosts); j++ {
-					if resultPosts[j].Parent == 0 {
-						resultPosts = resultPosts[j:]
-						break
-					}
-				}
-				break
-			}
-		}
+		posts = append(posts, post)
 	}
 
-	limitCount := 0
-	for m, post := range resultPosts {
-		if post.Parent == 0 {
-			limitCount++
-		}
-
-		if limitCount == limit+1 {
-			resultPosts = resultPosts[:m]
-			break
-		}
-	}
-
-	return resultPosts, nil
+	return posts, nil
 }
 
 func (f ForumRepository) UpdateThread(thread models.Thread) (models.Thread, error) {

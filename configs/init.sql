@@ -45,12 +45,15 @@ CREATE UNLOGGED TABLE IF NOT EXISTS posts (
     parent INTEGER NOT NULL,
     thread INTEGER NOT NULL,
     thread_slug TEXT NOT NULL,
-    created TIMESTAMPTZ DEFAULT current_timestamp,
+    created TIMESTAMPTZ,
     forum TEXT NOT NULL,
     isEdited BOOLEAN DEFAULT false,
+    path INTEGER[] DEFAULT ARRAY []::INTEGER[],
 
     FOREIGN KEY (author) REFERENCES users (nickname) ON UPDATE CASCADE
 );
+
+CREATE INDEX idx_path ON posts (path);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS thread_vote (
     thread_id INTEGER,
@@ -96,3 +99,24 @@ CREATE TRIGGER update_votes_on_update
     ON thread_vote
     FOR EACH ROW
 EXECUTE PROCEDURE update_votes_in_thread();
+
+
+CREATE OR REPLACE FUNCTION update_path() RETURNS TRIGGER AS
+$update_path$
+BEGIN
+    IF (new.parent = 0) THEN
+        new.path = new.path || new.id;
+    ELSE
+        new.path = (select path from posts where id = new.parent) || new.id;
+    END IF;
+
+    UPDATE forums SET post_count = post_count + 1 WHERE slug = new.forum;
+    RETURN new;
+end
+$update_path$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_post_path
+    BEFORE INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE update_path();
