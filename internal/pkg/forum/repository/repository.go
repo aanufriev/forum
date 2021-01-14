@@ -132,6 +132,7 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	limitInt, err := strconv.Atoi(limit)
 	if err != nil {
