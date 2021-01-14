@@ -320,7 +320,6 @@ func (f ForumDelivery) GetPosts(w http.ResponseWriter, r *http.Request) {
 
 	err := f.forumUsecase.CheckThread(slugOrID)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
@@ -434,7 +433,6 @@ func (f ForumDelivery) GetUsersFromForum(w http.ResponseWriter, r *http.Request)
 
 	users, err := f.forumUsecase.GetUsersFromForum(slug, limit, sinceParam, descParam)
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -590,7 +588,6 @@ func (f ForumDelivery) GetServiceInfo(w http.ResponseWriter, r *http.Request) {
 
 	info, err := f.forumUsecase.GetServiceInfo()
 	if err != nil {
-		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
