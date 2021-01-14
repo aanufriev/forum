@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/aanufriev/forum/configs"
 	"github.com/aanufriev/forum/internal/pkg/forum"
@@ -222,10 +221,7 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created := time.Now()
-
 	for idx := range posts {
-		posts[idx].Created = created
 		_, err = f.userUsecase.CheckIfUserExists(posts[idx].Author)
 		if err != nil {
 			msg := models.Message{

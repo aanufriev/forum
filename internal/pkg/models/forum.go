@@ -1,6 +1,6 @@
 package models
 
-import "time"
+import "github.com/go-openapi/strfmt"
 
 //easyjson:json
 type Forum struct {
@@ -25,15 +25,15 @@ type Thread struct {
 
 //easyjson:json
 type Post struct {
-	ID       int       `json:"id"`
-	Author   string    `json:"author"`
-	Message  string    `json:"message"`
-	Parent   int       `json:"parent,omitempty"`
-	Forum    string    `json:"forum"`
-	Slug     string    `json:"slug"`
-	Thread   int       `json:"thread"`
-	Created  time.Time `json:"created,omitempty"`
-	IsEdited bool      `json:"isEdited"`
+	ID       int             `json:"id"`
+	Author   string          `json:"author"`
+	Message  string          `json:"message"`
+	Parent   int             `json:"parent,omitempty"`
+	Forum    string          `json:"forum"`
+	Slug     string          `json:"slug"`
+	Thread   int             `json:"thread"`
+	Created  strfmt.DateTime `json:"created,omitempty"`
+	IsEdited bool            `json:"isEdited"`
 }
 
 //easyjson:json
