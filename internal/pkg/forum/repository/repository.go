@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/aanufriev/forum/internal/pkg/forum"
 	"github.com/aanufriev/forum/internal/pkg/models"
@@ -188,7 +189,7 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 		err := f.db.QueryRow(`
 			INSERT INTO posts (author, msg, parent, thread, thread_slug, forum, created)
 			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Forum, posts[idx].Created,
+			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Forum, posts[idx].Created.Format(time.RFC3339Nano),
 		).Scan(&posts[idx].ID)
 
 		if err != nil {
