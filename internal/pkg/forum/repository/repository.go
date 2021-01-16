@@ -158,21 +158,16 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 		}
 	}
 
-	var slug string
-	if thread.Slug != nil {
-		slug = *thread.Slug
-	}
 	created := strfmt.DateTime(time.Now())
 	for idx := range posts {
 		posts[idx].Forum = thread.Forum
 		posts[idx].Thread = thread.ID
-		posts[idx].Slug = slug
 		posts[idx].Created = created
 
 		err := f.db.QueryRow(`
-			INSERT INTO posts (author, msg, parent, thread, thread_slug, forum, created)
-			VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Slug, posts[idx].Forum, posts[idx].Created,
+			INSERT INTO posts (author, msg, parent, thread, forum, created)
+			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
 		).Scan(&posts[idx].ID)
 
 		if err != nil {

@@ -61,7 +61,6 @@ CREATE UNLOGGED TABLE IF NOT EXISTS posts (
     msg TEXT NOT NULL,
     parent INTEGER NOT NULL,
     thread INTEGER NOT NULL,
-    thread_slug CITEXT COLLATE "C" NOT NULL,
     created TIMESTAMPTZ,
     forum CITEXT COLLATE "C" NOT NULL,
     isEdited BOOLEAN DEFAULT false,
