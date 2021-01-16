@@ -18,4 +18,5 @@ type Repository interface {
 	Update(user models.User) (models.User, error)
 	CheckIfUserExists(nickname string) (string, error)
 	GetUserNicknameWithEmail(email string) (string, error)
+	GetUserIDByNickname(nickname string) (int, error)
 }

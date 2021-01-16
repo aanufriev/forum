@@ -131,3 +131,17 @@ func (u UserRepository) GetUserNicknameWithEmail(email string) (string, error) {
 
 	return nickname, nil
 }
+
+func (u UserRepository) GetUserIDByNickname(nickname string) (int, error) {
+	var id int
+	err := u.db.QueryRow(
+		"SELECT id FROM users WHERE nickname = $1",
+		nickname,
+	).Scan(&id)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
+}

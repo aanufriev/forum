@@ -1,5 +1,25 @@
 CREATE EXTENSION IF not EXISTS CITEXT;
 
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS forums CASCADE;
+DROP TABLE IF EXISTS threads CASCADE;
+DROP TABLE IF EXISTS posts CASCADE;
+DROP TABLE IF EXISTS forum_user CASCADE;
+DROP TABLE IF EXISTS thread_vote CASCADE;
+
+DROP FUNCTION IF EXISTS add_votes_to_thread();
+DROP FUNCTION IF EXISTS update_votes_in_thread()();
+DROP FUNCTION IF EXISTS update_path();
+DROP FUNCTION IF EXISTS update_thread_count();
+DROP FUNCTION IF EXISTS add_user_to_forum();
+
+DROP TRIGGER IF EXISTS update_votes_on_insert ON thread_vote
+DROP TRIGGER IF EXISTS update_votes_on_update ON thread_vote;
+DROP TRIGGER IF EXISTS update_post_path ON posts;
+DROP TRIGGER IF EXISTS update_thread_count ON threads;
+DROP TRIGGER IF EXISTS add_user_to_forum ON threads;
+DROP TRIGGER IF EXISTS add_user_to_forum_on_post_creation ON posts;
+
 CREATE UNLOGGED TABLE IF NOT EXISTS users (
     id SERIAL NOT NULL PRIMARY KEY,
     nickname CITEXT COLLATE "C" NOT NULL UNIQUE,
@@ -76,14 +96,14 @@ CREATE INDEX posts_thread_id_path1_parent ON posts (thread, id, path[1], parent)
 
 CREATE UNLOGGED TABLE IF NOT EXISTS thread_vote (
     thread_id INTEGER,
-    nickname CITEXT COLLATE "C" NOT NULL,
+    user_id INTEGER,
     vote INTEGER NOT NULL,
 
     FOREIGN KEY (thread_id) REFERENCES threads (id),
-    FOREIGN KEY (nickname) REFERENCES users (nickname) ON UPDATE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
-CREATE INDEX votes_user_thread ON thread_vote (thread_id, nickname);
+CREATE INDEX votes_user_thread ON thread_vote (thread_id, user_id);
 
 
 CREATE OR REPLACE FUNCTION add_votes_to_thread() RETURNS TRIGGER AS

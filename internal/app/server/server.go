@@ -2,19 +2,17 @@ package server
 
 import (
 	"log"
-	"net/http"
 
 	"github.com/aanufriev/forum/configs"
 	forumDelivery "github.com/aanufriev/forum/internal/pkg/forum/delivery"
 	forumRepository "github.com/aanufriev/forum/internal/pkg/forum/repository"
 	forumUsecase "github.com/aanufriev/forum/internal/pkg/forum/usecase"
-	"github.com/aanufriev/forum/internal/pkg/middleware"
 	userDelivery "github.com/aanufriev/forum/internal/pkg/user/delivery"
 	userRepository "github.com/aanufriev/forum/internal/pkg/user/repository"
 	userUsecase "github.com/aanufriev/forum/internal/pkg/user/usecase"
+	"github.com/buaazp/fasthttprouter"
 	"github.com/jackc/pgx"
-
-	"github.com/gorilla/mux"
+	"github.com/valyala/fasthttp"
 )
 
 func StartApiServer() {
@@ -40,33 +38,30 @@ func StartApiServer() {
 	forumUsecase := forumUsecase.New(forumRepository)
 	forumDelivery := forumDelivery.New(forumUsecase, userRepository)
 
-	mux := mux.NewRouter().PathPrefix(configs.ApiUrl).Subrouter()
+	router := fasthttprouter.New()
 
-	mux.HandleFunc("/user/{nickname}/create", userDelivery.Create).Methods("POST")
-	mux.HandleFunc("/user/{nickname}/profile", userDelivery.Get).Methods("GET")
-	mux.HandleFunc("/user/{nickname}/profile", userDelivery.Update).Methods("POST")
+	router.POST("/api/user/:nickname/create", userDelivery.Create)
+	router.GET("/api/user/:nickname/profile", userDelivery.Get)
+	router.POST("/api/user/:nickname/profile", userDelivery.Update)
 
-	mux.HandleFunc("/forum/create", forumDelivery.Create).Methods("POST")
-	mux.HandleFunc("/forum/{slug}/details", forumDelivery.Get).Methods("GET")
-	mux.HandleFunc("/forum/{slug}/create", forumDelivery.CreateThread).Methods("POST")
-	mux.HandleFunc("/forum/{slug}/threads", forumDelivery.GetThreads).Methods("GET")
-	mux.HandleFunc("/forum/{slug}/users", forumDelivery.GetUsersFromForum).Methods("GET")
+	router.POST("/api/forum/:slug", forumDelivery.Create)
+	router.GET("/api/forum/:slug/details", forumDelivery.Get)
+	router.POST("/api/forum/:slug/create", forumDelivery.CreateThread)
+	router.GET("/api/forum/:slug/threads", forumDelivery.GetThreads)
+	router.GET("/api/forum/:slug/users", forumDelivery.GetUsersFromForum)
 
-	mux.HandleFunc("/thread/{slug_or_id}/create", forumDelivery.CreatePosts).Methods("POST")
-	mux.HandleFunc("/thread/{slug_or_id}/details", forumDelivery.GetThread).Methods("GET")
-	mux.HandleFunc("/thread/{slug_or_id}/vote", forumDelivery.Vote).Methods("POST")
-	mux.HandleFunc("/thread/{slug_or_id}/posts", forumDelivery.GetPosts).Methods("GET")
-	mux.HandleFunc("/thread/{slug_or_id}/details", forumDelivery.UpdateThread).Methods("POST")
+	router.POST("/api/thread/:slug_or_id/create", forumDelivery.CreatePosts)
+	router.GET("/api/thread/:slug_or_id/details", forumDelivery.GetThread)
+	router.POST("/api/thread/:slug_or_id/vote", forumDelivery.Vote)
+	router.GET("/api/thread/:slug_or_id/posts", forumDelivery.GetPosts)
+	router.POST("/api/thread/:slug_or_id/details", forumDelivery.UpdateThread)
 
-	mux.HandleFunc("/post/{id}/details", forumDelivery.GetPostDetails).Methods("GET")
-	mux.HandleFunc("/post/{id}/details", forumDelivery.UpdatePost).Methods("POST")
+	router.GET("/api/post/:id/details", forumDelivery.GetPostDetails)
+	router.POST("/api/post/:id/details", forumDelivery.UpdatePost)
 
-	mux.HandleFunc("/service/clear", forumDelivery.ClearService).Methods("POST")
-	mux.HandleFunc("/service/status", forumDelivery.GetServiceInfo).Methods("GET")
-
-	mixWithAccessLog := middleware.AccessLog(mux)
-	muxWithCORS := middleware.CORS(mixWithAccessLog)
+	router.POST("/api/service/clear", forumDelivery.ClearService)
+	router.GET("/api/service/status", forumDelivery.GetServiceInfo)
 
 	log.Printf("server started at port %v", configs.ApiPort)
-	log.Fatal(http.ListenAndServe(configs.ApiPort, muxWithCORS))
+	log.Fatal(fasthttp.ListenAndServe(":5000", router.Handler))
 }

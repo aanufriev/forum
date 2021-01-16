@@ -11,7 +11,7 @@ import (
 	"github.com/aanufriev/forum/internal/pkg/forum"
 	"github.com/aanufriev/forum/internal/pkg/models"
 	"github.com/aanufriev/forum/internal/pkg/user"
-	"github.com/gorilla/mux"
+	"github.com/valyala/fasthttp"
 )
 
 type ForumDelivery struct {
@@ -26,13 +26,13 @@ func New(forumUsecase forum.Usecase, userUsecase user.Usecase) ForumDelivery {
 	}
 }
 
-func (f ForumDelivery) Create(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) Create(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	forum := models.Forum{}
-	err := json.NewDecoder(r.Body).Decode(&forum)
+	var forum models.Forum
+	err := json.Unmarshal(ctx.PostBody(), &forum)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 
@@ -42,10 +42,10 @@ func (f ForumDelivery) Create(w http.ResponseWriter, r *http.Request) {
 			Text: fmt.Sprintf("Can't find user with id #%v\n", forum.User),
 		}
 
-		w.WriteHeader(http.StatusNotFound)
-		err = json.NewEncoder(w).Encode(msg)
+		ctx.SetStatusCode(http.StatusNotFound)
+		err = json.NewEncoder(ctx).Encode(msg)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 		return
@@ -56,58 +56,58 @@ func (f ForumDelivery) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		existingForum, err := f.forumUsecase.Get(forum.Slug)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 
-		w.WriteHeader(http.StatusConflict)
-		err = json.NewEncoder(w).Encode(existingForum)
+		ctx.SetStatusCode(http.StatusConflict)
+		err = json.NewEncoder(ctx).Encode(existingForum)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(forum)
+	ctx.SetStatusCode(http.StatusCreated)
+	err = json.NewEncoder(ctx).Encode(forum)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) Get(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) Get(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slug := mux.Vars(r)["slug"]
+	slug := ctx.UserValue("slug").(string)
 	forum, err := f.forumUsecase.Get(slug)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find forum with slug: %v", slug),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(forum)
+	err = json.NewEncoder(ctx).Encode(forum)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) CreateThread(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) CreateThread(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slug := mux.Vars(r)["slug"]
+	slug := ctx.UserValue("slug").(string)
 
 	thread := &models.Thread{}
-	err := json.NewDecoder(r.Body).Decode(thread)
+	err := json.Unmarshal(ctx.PostBody(), thread)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 	thread.Forum = slug
@@ -118,10 +118,10 @@ func (f ForumDelivery) CreateThread(w http.ResponseWriter, r *http.Request) {
 			Text: fmt.Sprintf("Can't find user with id #%v\n", thread.Author),
 		}
 
-		w.WriteHeader(http.StatusNotFound)
-		err = json.NewEncoder(w).Encode(msg)
+		ctx.SetStatusCode(http.StatusNotFound)
+		err = json.NewEncoder(ctx).Encode(msg)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 		return
@@ -131,93 +131,93 @@ func (f ForumDelivery) CreateThread(w http.ResponseWriter, r *http.Request) {
 	err = f.forumUsecase.CreateThread(thread)
 	if err != nil {
 		if err == forum.ErrForumDoesntExists {
-			w.WriteHeader(http.StatusNotFound)
+			ctx.SetStatusCode(http.StatusNotFound)
 			msg := models.Message{
 				Text: fmt.Sprintf("Can't find thread forum by slug: %v", thread.Forum),
 			}
 
-			_ = json.NewEncoder(w).Encode(msg)
+			_ = json.NewEncoder(ctx).Encode(msg)
 			return
 		}
 
 		existedThread, err := f.forumUsecase.GetThread(*thread.Slug)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 
-		w.WriteHeader(http.StatusConflict)
-		_ = json.NewEncoder(w).Encode(existedThread)
+		ctx.SetStatusCode(http.StatusConflict)
+		_ = json.NewEncoder(ctx).Encode(existedThread)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(thread)
+	ctx.SetStatusCode(http.StatusCreated)
+	err = json.NewEncoder(ctx).Encode(thread)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) GetThreads(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) GetThreads(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slug := mux.Vars(r)["slug"]
+	slug := ctx.UserValue("slug").(string)
 
 	_, err := f.forumUsecase.CheckForum(slug)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find forum by slug: %v", slug),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
-	limit := r.URL.Query().Get(configs.Limit)
-	desc := r.URL.Query().Get(configs.Desc)
-	since := r.URL.Query().Get(configs.Since)
+	limit := string(ctx.URI().QueryArgs().Peek(configs.Limit))
+	desc := string(ctx.URI().QueryArgs().Peek(configs.Desc))
+	since := string(ctx.URI().QueryArgs().Peek(configs.Since))
 
 	threads, err := f.forumUsecase.GetThreads(slug, limit, since, desc)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(threads)
+	err = json.NewEncoder(ctx).Encode(threads)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slugOrID := mux.Vars(r)["slug_or_id"]
+	slugOrID := ctx.UserValue("slug_or_id").(string)
 
 	posts := []models.Post{}
-	err := json.NewDecoder(r.Body).Decode(&posts)
+	err := json.Unmarshal(ctx.PostBody(), &posts)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 
 	err = f.forumUsecase.CheckThread(slugOrID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find post thread by id: %v", slugOrID),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
 	if len(posts) == 0 {
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(posts)
+		ctx.SetStatusCode(http.StatusCreated)
+		_ = json.NewEncoder(ctx).Encode(posts)
 		return
 	}
 
@@ -228,10 +228,10 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 				Text: fmt.Sprintf("Can't find post author by nickname: %v", posts[idx].Author),
 			}
 
-			w.WriteHeader(http.StatusNotFound)
-			err = json.NewEncoder(w).Encode(msg)
+			ctx.SetStatusCode(http.StatusNotFound)
+			err = json.NewEncoder(ctx).Encode(msg)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
+				ctx.SetStatusCode(http.StatusInternalServerError)
 				return
 			}
 			return
@@ -240,53 +240,65 @@ func (f ForumDelivery) CreatePosts(w http.ResponseWriter, r *http.Request) {
 
 	posts, err = f.forumUsecase.CreatePosts(slugOrID, posts)
 	if err != nil {
-		w.WriteHeader(http.StatusConflict)
+		ctx.SetStatusCode(http.StatusConflict)
 		msg := models.Message{
 			Text: "Parent post was created in another thread",
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(posts)
+	ctx.SetStatusCode(http.StatusCreated)
+	_ = json.NewEncoder(ctx).Encode(posts)
 }
 
-func (f ForumDelivery) GetThread(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) GetThread(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slugOrID := mux.Vars(r)["slug_or_id"]
+	slugOrID := ctx.UserValue("slug_or_id").(string)
 
 	threads, err := f.forumUsecase.GetThread(slugOrID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(threads)
+	err = json.NewEncoder(ctx).Encode(threads)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) Vote(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) Vote(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slugOrID := mux.Vars(r)["slug_or_id"]
+	slugOrID := ctx.UserValue("slug_or_id").(string)
 
 	vote := models.Vote{}
-	err := json.NewDecoder(r.Body).Decode(&vote)
+	err := json.Unmarshal(ctx.PostBody(), &vote)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
+
+	userID, err := f.userUsecase.GetUserIDByNickname(vote.Nickname)
+	if err != nil {
+		msg := models.Message{
+			Text: fmt.Sprintf("Can't find user with id #%v\n", vote.Nickname),
+		}
+
+		ctx.SetStatusCode(http.StatusNotFound)
+		_ = json.NewEncoder(ctx).Encode(msg)
+		return
+	}
+	vote.UserID = userID
 
 	vote.Slug = slugOrID
 	id, err := strconv.Atoi(slugOrID)
@@ -297,166 +309,166 @@ func (f ForumDelivery) Vote(w http.ResponseWriter, r *http.Request) {
 
 	thread, err := f.forumUsecase.Vote(vote)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(thread)
+	err = json.NewEncoder(ctx).Encode(thread)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) GetPosts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) GetPosts(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slugOrID := mux.Vars(r)["slug_or_id"]
+	slugOrID := ctx.UserValue("slug_or_id").(string)
 
 	err := f.forumUsecase.CheckThread(slugOrID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
-	limitParam := r.URL.Query().Get(configs.Limit)
+	limitParam := string(ctx.URI().QueryArgs().Peek(configs.Limit))
 	limit, err := strconv.Atoi(limitParam)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 
-	sortParam := r.URL.Query().Get(configs.Sort)
-	descParam := r.URL.Query().Get(configs.Desc)
+	sortParam := string(ctx.URI().QueryArgs().Peek(configs.Sort))
+	descParam := string(ctx.URI().QueryArgs().Peek(configs.Desc))
 	if descParam == "" {
 		descParam = "false"
 	}
 
-	sinceParam := r.URL.Query().Get(configs.Since)
+	sinceParam := string(ctx.URI().QueryArgs().Peek(configs.Since))
 
 	posts, err := f.forumUsecase.GetPosts(slugOrID, limit, sortParam, descParam, sinceParam)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(posts)
+	err = json.NewEncoder(ctx).Encode(posts)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) UpdateThread(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) UpdateThread(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slugOrID := mux.Vars(r)["slug_or_id"]
+	slugOrID := ctx.UserValue("slug_or_id").(string)
 
 	err := f.forumUsecase.CheckThread(slugOrID)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find thread by slug: %v", slugOrID),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
 	thread := models.Thread{}
-	err = json.NewDecoder(r.Body).Decode(&thread)
+	err = json.Unmarshal(ctx.PostBody(), &thread)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 
 	if thread.Title == "" && thread.Message == "" {
 		thread, err = f.forumUsecase.GetThread(slugOrID)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
+			ctx.SetStatusCode(http.StatusBadRequest)
 			return
 		}
 	} else {
 		thread, err = f.forumUsecase.UpdateThread(slugOrID, thread)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 	}
 
-	err = json.NewEncoder(w).Encode(thread)
+	err = json.NewEncoder(ctx).Encode(thread)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) GetUsersFromForum(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) GetUsersFromForum(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	slug := mux.Vars(r)["slug"]
+	slug := ctx.UserValue("slug").(string)
 
 	_, err := f.forumUsecase.CheckForum(slug)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find forum by slug: %v", slug),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
-	limitParam := r.URL.Query().Get(configs.Limit)
+	limitParam := string(ctx.URI().QueryArgs().Peek(configs.Limit))
 	limit, err := strconv.Atoi(limitParam)
 	if err != nil && limitParam != "" {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 
-	descParam := r.URL.Query().Get(configs.Desc)
+	descParam := string(ctx.URI().QueryArgs().Peek(configs.Desc))
 	if descParam == "" {
 		descParam = "false"
 	}
 
-	sinceParam := r.URL.Query().Get(configs.Since)
+	sinceParam := string(ctx.URI().QueryArgs().Peek(configs.Since))
 
 	users, err := f.forumUsecase.GetUsersFromForum(slug, limit, sinceParam, descParam)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(users)
+	err = json.NewEncoder(ctx).Encode(users)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) GetPostDetails(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) GetPostDetails(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	id := mux.Vars(r)["id"]
+	id := ctx.UserValue("id").(string)
 
 	post, err := f.forumUsecase.GetPostDetails(id)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find post with id: %v", id),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
@@ -464,7 +476,7 @@ func (f ForumDelivery) GetPostDetails(w http.ResponseWriter, r *http.Request) {
 		Post: post,
 	}
 
-	related := r.URL.Query().Get("related")
+	related := string(ctx.URI().QueryArgs().Peek("related"))
 	if strings.Contains(related, "user") {
 		author, err := f.userUsecase.Get(post.Author)
 		if err != nil {
@@ -472,10 +484,10 @@ func (f ForumDelivery) GetPostDetails(w http.ResponseWriter, r *http.Request) {
 				Text: fmt.Sprintf("Can't find user with id #%v\n", post.Author),
 			}
 
-			w.WriteHeader(http.StatusNotFound)
-			err = json.NewEncoder(w).Encode(msg)
+			ctx.SetStatusCode(http.StatusNotFound)
+			err = json.NewEncoder(ctx).Encode(msg)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
+				ctx.SetStatusCode(http.StatusInternalServerError)
 				return
 			}
 			return
@@ -486,12 +498,12 @@ func (f ForumDelivery) GetPostDetails(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(related, "thread") {
 		thread, err := f.forumUsecase.GetThread(strconv.Itoa(post.Thread))
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
+			ctx.SetStatusCode(http.StatusNotFound)
 			msg := models.Message{
 				Text: fmt.Sprintf("Can't find thread forum by slug: %v", post.Thread),
 			}
 
-			_ = json.NewEncoder(w).Encode(msg)
+			_ = json.NewEncoder(ctx).Encode(msg)
 			return
 		}
 		postInfo.Thread = &thread
@@ -500,57 +512,57 @@ func (f ForumDelivery) GetPostDetails(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(related, "forum") {
 		forum, err := f.forumUsecase.Get(post.Forum)
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
+			ctx.SetStatusCode(http.StatusNotFound)
 			msg := models.Message{
 				Text: fmt.Sprintf("Can't find forum by slug: %v", post.Forum),
 			}
 
-			_ = json.NewEncoder(w).Encode(msg)
+			_ = json.NewEncoder(ctx).Encode(msg)
 			return
 		}
 		postInfo.Forum = &forum
 	}
 
-	err = json.NewEncoder(w).Encode(postInfo)
+	err = json.NewEncoder(ctx).Encode(postInfo)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) UpdatePost(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) UpdatePost(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
-	id := mux.Vars(r)["id"]
+	id := ctx.UserValue("id").(string)
 
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 
-	post := models.Post{}
-	err = json.NewDecoder(r.Body).Decode(&post)
+	var post models.Post
+	err = json.Unmarshal(ctx.PostBody(), &post)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 
 	if post.Message == "" {
 		post, err := f.forumUsecase.GetPostDetails(id)
 		if err != nil {
-			w.WriteHeader(http.StatusNotFound)
+			ctx.SetStatusCode(http.StatusNotFound)
 			msg := models.Message{
 				Text: fmt.Sprintf("Can't find post with id: %v", id),
 			}
 
-			_ = json.NewEncoder(w).Encode(msg)
+			_ = json.NewEncoder(ctx).Encode(msg)
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(post)
+		err = json.NewEncoder(ctx).Encode(post)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 		return
@@ -559,42 +571,42 @@ func (f ForumDelivery) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	post, err = f.forumUsecase.UpdatePost(post)
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
+		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
 			Text: fmt.Sprintf("Can't find post with id: %v", id),
 		}
 
-		_ = json.NewEncoder(w).Encode(msg)
+		_ = json.NewEncoder(ctx).Encode(msg)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(post)
+	err = json.NewEncoder(ctx).Encode(post)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) ClearService(w http.ResponseWriter, r *http.Request) {
+func (f ForumDelivery) ClearService(ctx *fasthttp.RequestCtx) {
 	err := f.forumUsecase.ClearService()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (f ForumDelivery) GetServiceInfo(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
+func (f ForumDelivery) GetServiceInfo(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
 
 	info, err := f.forumUsecase.GetServiceInfo()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(info)
+	err = json.NewEncoder(ctx).Encode(info)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }

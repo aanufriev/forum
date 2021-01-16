@@ -8,7 +8,7 @@ import (
 
 	"github.com/aanufriev/forum/internal/pkg/models"
 	"github.com/aanufriev/forum/internal/pkg/user"
-	"github.com/gorilla/mux"
+	"github.com/valyala/fasthttp"
 )
 
 type UserDelivery struct {
@@ -21,14 +21,14 @@ func New(userUsecase user.Usecase) UserDelivery {
 	}
 }
 
-func (u UserDelivery) Create(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	nickname := mux.Vars(r)["nickname"]
+func (u UserDelivery) Create(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
+	nickname := ctx.UserValue("nickname").(string)
 
-	user := models.User{}
-	err := json.NewDecoder(r.Body).Decode(&user)
+	var user models.User
+	err := user.UnmarshalJSON(ctx.PostBody())
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 	user.Nickname = nickname
@@ -37,67 +37,63 @@ func (u UserDelivery) Create(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		users, err := u.userUsecase.GetUsersWithNicknameAndEmail(nickname, *user.Email)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 
-		w.WriteHeader(http.StatusConflict)
-		err = json.NewEncoder(w).Encode(users)
+		ctx.SetStatusCode(http.StatusConflict)
+		err = json.NewEncoder(ctx).Encode(users)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	err = json.NewEncoder(w).Encode(user)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	ctx.SetStatusCode(http.StatusCreated)
+	_ = json.NewEncoder(ctx).Encode(user)
 }
 
-func (u UserDelivery) Get(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	nickname := mux.Vars(r)["nickname"]
+func (u UserDelivery) Get(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
+	nickname := ctx.UserValue("nickname").(string)
 
 	profile, err := u.userUsecase.Get(nickname)
 	if err != nil {
 
 		if errors.Is(err, user.ErrUserDoesntExists) {
-			w.WriteHeader(http.StatusNotFound)
+			ctx.SetStatusCode(http.StatusNotFound)
 			msg := models.Message{
 				Text: fmt.Sprintf("Can't find user with id #%v\n", nickname),
 			}
 
-			err = json.NewEncoder(w).Encode(msg)
+			err = json.NewEncoder(ctx).Encode(msg)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
+				ctx.SetStatusCode(http.StatusInternalServerError)
 				return
 			}
 			return
 		}
 
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(profile)
+	err = json.NewEncoder(ctx).Encode(profile)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }
 
-func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	nickname := mux.Vars(r)["nickname"]
+func (u UserDelivery) Update(ctx *fasthttp.RequestCtx) {
+	ctx.SetContentType("application/json")
+	nickname := ctx.UserValue("nickname").(string)
 
 	profile := models.User{}
-	err := json.NewDecoder(r.Body).Decode(&profile)
+	err := profile.UnmarshalJSON(ctx.PostBody())
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 	profile.Nickname = nickname
@@ -106,37 +102,37 @@ func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var msg models.Message
 		if errors.Is(err, user.ErrUserDoesntExists) {
-			w.WriteHeader(http.StatusNotFound)
+			ctx.SetStatusCode(http.StatusNotFound)
 			msg = models.Message{
 				Text: fmt.Sprintf("Can't find user with id #%v\n", nickname),
 			}
 		} else if errors.Is(err, user.ErrDataConflict) {
 			emailOwnerNickname, err := u.userUsecase.GetUserNicknameWithEmail(*profile.Email)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
+				ctx.SetStatusCode(http.StatusInternalServerError)
 				return
 			}
 
-			w.WriteHeader(http.StatusConflict)
+			ctx.SetStatusCode(http.StatusConflict)
 			msg = models.Message{
 				Text: fmt.Sprintf("This email is already registered by user: %v", emailOwnerNickname),
 			}
 		} else {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 
-		err = json.NewEncoder(w).Encode(msg)
+		err = json.NewEncoder(ctx).Encode(msg)
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
+			ctx.SetStatusCode(http.StatusInternalServerError)
 			return
 		}
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(fullProfile)
+	err = json.NewEncoder(ctx).Encode(fullProfile)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		ctx.SetStatusCode(http.StatusInternalServerError)
 		return
 	}
 }

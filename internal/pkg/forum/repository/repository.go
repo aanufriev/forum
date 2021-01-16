@@ -227,8 +227,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 	var voteValue int
 	err = f.db.QueryRow(
 		`SELECT vote FROM thread_vote
-		WHERE nickname = $1 AND thread_id = $2`,
-		vote.Nickname, thread.ID,
+		WHERE user_id = $1 AND thread_id = $2`,
+		vote.UserID, thread.ID,
 	).Scan(&voteValue)
 
 	if err != nil && err != pgx.ErrNoRows {
@@ -237,8 +237,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 
 	if err == pgx.ErrNoRows {
 		_, err = f.db.Exec(
-			"INSERT INTO thread_vote (nickname, thread_id, vote) VALUES($1, $2, $3)",
-			vote.Nickname, thread.ID, vote.Voice,
+			"INSERT INTO thread_vote (user_id, thread_id, vote) VALUES($1, $2, $3)",
+			vote.UserID, thread.ID, vote.Voice,
 		)
 
 		if err != nil {
@@ -257,8 +257,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 
 	_, err = f.db.Exec(
 		`UPDATE thread_vote SET vote = $1
-		WHERE nickname = $2 AND thread_id = $3`,
-		vote.Voice, vote.Nickname, thread.ID,
+		WHERE user_id = $2 AND thread_id = $3`,
+		vote.Voice, vote.UserID, thread.ID,
 	)
 
 	if err != nil {

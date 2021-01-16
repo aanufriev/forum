@@ -38,3 +38,7 @@ func (u UserUsecase) CheckIfUserExists(nickname string) (string, error) {
 func (u UserUsecase) GetUserNicknameWithEmail(email string) (string, error) {
 	return u.userRepository.GetUserNicknameWithEmail(email)
 }
+
+func (u UserUsecase) GetUserIDByNickname(nickname string) (int, error) {
+	return u.userRepository.GetUserIDByNickname(nickname)
+}
