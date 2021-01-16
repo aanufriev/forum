@@ -158,11 +158,15 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 		}
 	}
 
+	var slug string
+	if thread.Slug != nil {
+		slug = *thread.Slug
+	}
 	created := strfmt.DateTime(time.Now())
 	for idx := range posts {
 		posts[idx].Forum = thread.Forum
 		posts[idx].Thread = thread.ID
-		posts[idx].Slug = *thread.Slug
+		posts[idx].Slug = slug
 		posts[idx].Created = created
 
 		err := f.db.QueryRow(`
