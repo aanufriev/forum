@@ -6,13 +6,14 @@ import (
 
 	"github.com/aanufriev/forum/internal/pkg/models"
 	"github.com/aanufriev/forum/internal/pkg/user"
+	"github.com/jackc/pgx"
 )
 
 type UserRepository struct {
-	db *sql.DB
+	db *pgx.ConnPool
 }
 
-func New(db *sql.DB) user.Repository {
+func New(db *pgx.ConnPool) user.Repository {
 	return UserRepository{
 		db: db,
 	}
@@ -40,7 +41,7 @@ func (u UserRepository) Get(nickname string) (models.User, error) {
 	).Scan(&model.ID, &model.Nickname, &model.Fullname, &model.Email, &model.About)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == pgx.ErrNoRows {
 			return models.User{}, user.ErrUserDoesntExists
 		}
 		return models.User{}, fmt.Errorf("couldn't get user with nickname '%v'. Error: %w", nickname, err)

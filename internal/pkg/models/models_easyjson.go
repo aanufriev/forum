@@ -260,14 +260,8 @@ func easyjsonD2b7633eDecodeGithubComAanufrievForumInternalPkgModels2(in *jlexer.
 				*out.Slug = string(in.String())
 			}
 		case "created":
-			if in.IsNull() {
-				in.Skip()
-				out.Created = nil
-			} else {
-				if out.Created == nil {
-					out.Created = new(string)
-				}
-				*out.Created = string(in.String())
+			if data := in.Raw(); in.Ok() {
+				in.AddError((out.Created).UnmarshalJSON(data))
 			}
 		case "votes":
 			out.Votes = int(in.Int())
@@ -315,10 +309,10 @@ func easyjsonD2b7633eEncodeGithubComAanufrievForumInternalPkgModels2(out *jwrite
 		out.RawString(prefix)
 		out.String(string(*in.Slug))
 	}
-	if in.Created != nil {
+	if true {
 		const prefix string = ",\"created\":"
 		out.RawString(prefix)
-		out.String(string(*in.Created))
+		out.Raw((in.Created).MarshalJSON())
 	}
 	{
 		const prefix string = ",\"votes\":"

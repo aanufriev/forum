@@ -1,7 +1,6 @@
 package repository
 
 import (
-	"database/sql"
 	"fmt"
 	"strconv"
 	"time"
@@ -9,13 +8,14 @@ import (
 	"github.com/aanufriev/forum/internal/pkg/forum"
 	"github.com/aanufriev/forum/internal/pkg/models"
 	"github.com/go-openapi/strfmt"
+	"github.com/jackc/pgx"
 )
 
 type ForumRepository struct {
-	db *sql.DB
+	db *pgx.ConnPool
 }
 
-func New(db *sql.DB) forum.Repository {
+func New(db *pgx.ConnPool) forum.Repository {
 	return ForumRepository{
 		db: db,
 	}
@@ -232,11 +232,11 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 		vote.Nickname, thread.ID,
 	).Scan(&voteValue)
 
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && err != pgx.ErrNoRows {
 		return models.Thread{}, err
 	}
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		_, err = f.db.Exec(
 			"INSERT INTO thread_vote (nickname, thread_id, vote) VALUES($1, $2, $3)",
 			vote.Nickname, thread.ID, vote.Voice,
@@ -288,7 +288,7 @@ func (f ForumRepository) GetPosts(slugOrID string, limit int, order string, sinc
 	}
 
 	var (
-		rows *sql.Rows
+		rows *pgx.Rows
 	)
 
 	if limit != 0 {
@@ -344,7 +344,7 @@ func (f ForumRepository) GetPostsTree(slugOrID string, limit int, order string, 
 	}
 
 	var (
-		rows *sql.Rows
+		rows *pgx.Rows
 	)
 
 	if since == "" {
@@ -418,7 +418,7 @@ func (f ForumRepository) GetPostsParentTree(slugOrID string, limit int, order st
 	}
 
 	var (
-		rows *sql.Rows
+		rows *pgx.Rows
 	)
 
 	if since == "" {
@@ -519,7 +519,7 @@ func (f ForumRepository) UpdateThread(thread models.Thread) (models.Thread, erro
 
 func (f ForumRepository) GetUsersFromForum(slug string, limit int, since string, desc string) ([]models.User, error) {
 	var (
-		rows *sql.Rows
+		rows *pgx.Rows
 		err  error
 	)
 
