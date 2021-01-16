@@ -123,11 +123,10 @@ func (f ForumUsecase) GetServiceInfo() (models.ServiceInfo, error) {
 }
 
 func (f ForumUsecase) CheckThread(slugOrID string) error {
-	slug := slugOrID
 	id, err := strconv.Atoi(slugOrID)
 	if err != nil {
-		id = 0
+		return f.forumRepository.CheckThreadBySlug(slugOrID)
 	}
 
-	return f.forumRepository.CheckThread(slug, id)
+	return f.forumRepository.CheckThreadByID(id)
 }

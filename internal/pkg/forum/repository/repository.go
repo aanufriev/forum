@@ -640,11 +640,20 @@ func (f ForumRepository) GetServiceInfo() (models.ServiceInfo, error) {
 	return info, nil
 }
 
-func (f ForumRepository) CheckThread(slug string, id int) error {
+func (f ForumRepository) CheckThreadByID(id int) error {
 	err := f.db.QueryRow(
-		"SELECT id FROM threads WHERE slug = $1 OR id = $2",
-		slug, id,
+		"SELECT id FROM threads WHERE id = $1",
+		id,
 	).Scan(&id)
+
+	return err
+}
+
+func (f ForumRepository) CheckThreadBySlug(slug string) error {
+	err := f.db.QueryRow(
+		"SELECT id FROM threads WHERE slug = $1",
+		slug,
+	).Scan(&slug)
 
 	return err
 }

@@ -9,7 +9,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS users (
 );
 
 CREATE INDEX users_email_idx on users using hash (email);
-CREATE INDEX user_nickname_idx on users using hash (nickname);
+CREATE INDEX users_nickname_idx on users using hash (nickname);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS forums (
     id SERIAL NOT NULL PRIMARY KEY,
@@ -22,7 +22,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS forums (
     FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );
 
-CREATE UNIQUE INDEX forum_slug_idx on forums (slug);
+CREATE UNIQUE INDEX forums_slug_idx on forums (slug);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS forum_user (
     forum_slug CITEXT COLLATE "C" NOT NULL,
@@ -33,8 +33,8 @@ CREATE UNLOGGED TABLE IF NOT EXISTS forum_user (
     FOREIGN KEY (nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );
 
-CREATE INDEX forum_user_idx on forum_user (forum_slug, nickname);
-CREATE INDEX nickname_idx on forum_user (nickname);
+CREATE INDEX forum_user_forum_nickname_idx on forum_user (forum_slug, nickname);
+CREATE INDEX forum_user_nickname_idx on forum_user (nickname);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS threads (
     id SERIAL NOT NULL PRIMARY KEY,
@@ -43,15 +43,17 @@ CREATE UNLOGGED TABLE IF NOT EXISTS threads (
     forum CITEXT COLLATE "C" NOT NULL,
     msg TEXT NOT NULL,
     title TEXT NOT NULL,
-    slug CITEXT COLLATE "C" DEFAULT '',
+    slug CITEXT COLLATE "C" UNIQUE,
     votes INTEGER DEFAULT 0,
 
     FOREIGN KEY (author) REFERENCES users (nickname) ON UPDATE CASCADE,
     FOREIGN KEY (forum) REFERENCES forums (slug) ON UPDATE CASCADE
 );
 
-CREATE UNIQUE INDEX thread_slug_unique_idx on threads (slug);
-CREATE UNIQUE INDEX thread_id_index ON threads (id);
+CREATE INDEX threads_slug_idx on threads using hash (slug);
+CREATE INDEX threads_id_idx ON threads using hash (id);
+CREATE INDEX threads_forum_idx ON threads using hash (forum);
+
 
 CREATE UNLOGGED TABLE IF NOT EXISTS posts (
     id SERIAL NOT NULL PRIMARY KEY,
