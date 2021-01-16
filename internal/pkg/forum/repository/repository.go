@@ -180,12 +180,27 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 	return posts, nil
 }
 
-func (f ForumRepository) GetThread(slug string, id int) (models.Thread, error) {
+func (f ForumRepository) GetThreadByID(id int) (models.Thread, error) {
 	var thread models.Thread
 	err := f.db.QueryRow(
 		`SELECT author, created, forum, id, msg, slug, title, votes FROM threads
-		WHERE slug = $1 or id = $2`,
-		slug, id,
+		WHERE id = $1`,
+		id,
+	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
+
+	if err != nil {
+		return models.Thread{}, err
+	}
+
+	return thread, nil
+}
+
+func (f ForumRepository) GetThreadBySlug(slug string) (models.Thread, error) {
+	var thread models.Thread
+	err := f.db.QueryRow(
+		`SELECT author, created, forum, id, msg, slug, title, votes FROM threads
+		WHERE slug = $1`,
+		slug,
 	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
 
 	if err != nil {
@@ -196,7 +211,17 @@ func (f ForumRepository) GetThread(slug string, id int) (models.Thread, error) {
 }
 
 func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
-	thread, err := f.GetThread(vote.Slug, vote.ID)
+	var (
+		thread models.Thread
+		err    error
+	)
+
+	if vote.ID != 0 {
+		thread, err = f.GetThreadByID(vote.ID)
+	} else {
+		thread, err = f.GetThreadBySlug(vote.Slug)
+	}
+
 	if err != nil {
 		return models.Thread{}, err
 	}
@@ -420,7 +445,16 @@ func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, orde
 
 func (f ForumRepository) UpdateThread(thread models.Thread) (models.Thread, error) {
 	if thread.Title == "" || thread.Message == "" {
-		oldThread, err := f.GetThread(*thread.Slug, thread.ID)
+		var (
+			oldThread models.Thread
+			err       error
+		)
+
+		if thread.ID != 0 {
+			oldThread, err = f.GetThreadByID(thread.ID)
+		} else {
+			oldThread, err = f.GetThreadBySlug(*thread.Slug)
+		}
 		if err != nil {
 			return models.Thread{}, nil
 		}
