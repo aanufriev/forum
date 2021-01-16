@@ -38,12 +38,7 @@ func (f ForumUsecase) GetThreads(slug string, limit string, since string, desc s
 }
 
 func (f ForumUsecase) CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error) {
-	slug := slugOrID
-	id, err := strconv.Atoi(slugOrID)
-	if err != nil {
-		id = 0
-	}
-	return f.forumRepository.CreatePosts(slug, id, posts)
+	return f.forumRepository.CreatePosts(slugOrID, posts)
 }
 
 func (f ForumUsecase) GetThread(slugOrID string) (models.Thread, error) {
@@ -60,12 +55,6 @@ func (f ForumUsecase) Vote(vote models.Vote) (models.Thread, error) {
 }
 
 func (f ForumUsecase) GetPosts(slugOrID string, limit int, sort string, order string, since string) ([]models.Post, error) {
-	slug := slugOrID
-	id, err := strconv.Atoi(slugOrID)
-	if err != nil {
-		id = 0
-	}
-
 	switch order {
 	case "true":
 		order = "DESC"
@@ -75,13 +64,13 @@ func (f ForumUsecase) GetPosts(slugOrID string, limit int, sort string, order st
 
 	switch sort {
 	case "flat":
-		return f.forumRepository.GetPosts(slug, id, limit, order, since)
+		return f.forumRepository.GetPosts(slugOrID, limit, order, since)
 	case "tree":
-		return f.forumRepository.GetPostsTree(slug, id, limit, order, since)
+		return f.forumRepository.GetPostsTree(slugOrID, limit, order, since)
 	case "parent_tree":
-		return f.forumRepository.GetPostsParentTree(slug, id, limit, order, since)
+		return f.forumRepository.GetPostsParentTree(slugOrID, limit, order, since)
 	default:
-		return f.forumRepository.GetPosts(slug, id, limit, order, since)
+		return f.forumRepository.GetPosts(slugOrID, limit, order, since)
 	}
 }
 
@@ -125,8 +114,10 @@ func (f ForumUsecase) GetServiceInfo() (models.ServiceInfo, error) {
 func (f ForumUsecase) CheckThread(slugOrID string) error {
 	id, err := strconv.Atoi(slugOrID)
 	if err != nil {
-		return f.forumRepository.CheckThreadBySlug(slugOrID)
+		_, err = f.forumRepository.CheckThreadBySlug(slugOrID)
+		return err
 	}
 
-	return f.forumRepository.CheckThreadByID(id)
+	_, err = f.forumRepository.CheckThreadByID(id)
+	return err
 }

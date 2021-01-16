@@ -134,15 +134,14 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 	return threads, nil
 }
 
-func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) ([]models.Post, error) {
-	var forum string
-	var slugNull sql.NullString
-
-	err := f.db.QueryRow(
-		`SELECT forum, id, slug FROM threads
-		WHERE slug = $1 OR id = $2`,
-		slug, id,
-	).Scan(&forum, &id, &slugNull)
+func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error) {
+	var thread models.Thread
+	id, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		thread, err = f.GetThreadBySlug(slugOrID)
+	} else {
+		thread, err = f.GetThreadByID(id)
+	}
 
 	if err != nil {
 		return nil, err
@@ -154,16 +153,16 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 			return nil, err
 		}
 
-		if parentPost.Thread != id {
+		if parentPost.Thread != thread.ID {
 			return nil, fmt.Errorf("wrong parent")
 		}
 	}
 
 	created := strfmt.DateTime(time.Now())
 	for idx := range posts {
-		posts[idx].Forum = forum
-		posts[idx].Thread = id
-		posts[idx].Slug = slugNull.String
+		posts[idx].Forum = thread.Forum
+		posts[idx].Thread = thread.ID
+		posts[idx].Slug = *thread.Slug
 		posts[idx].Created = created
 
 		err := f.db.QueryRow(`
@@ -270,7 +269,7 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 	return thread, nil
 }
 
-func (f ForumRepository) GetPosts(slug string, id int, limit int, order string, since string) ([]models.Post, error) {
+func (f ForumRepository) GetPosts(slugOrID string, limit int, order string, since string) ([]models.Post, error) {
 	var sinceCond string
 	if since != "" {
 		if order == "DESC" {
@@ -279,12 +278,35 @@ func (f ForumRepository) GetPosts(slug string, id int, limit int, order string, 
 			sinceCond = fmt.Sprintf("AND id > %v", since)
 		}
 	}
-	rows, err := f.db.Query(
-		fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
-		WHERE (thread_slug = $1 OR thread = $2) %v
-		ORDER BY id %v`, sinceCond, order),
-		slug, id,
+
+	threadID, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		threadID, err = f.CheckThreadBySlug(slugOrID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var (
+		rows *sql.Rows
 	)
+
+	if limit != 0 {
+		rows, err = f.db.Query(
+			fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
+			WHERE thread = $1 %v
+			ORDER BY id %v
+			LIMIT %v`, sinceCond, order, limit),
+			threadID,
+		)
+	} else {
+		rows, err = f.db.Query(
+			fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
+			WHERE thread = $1 %v
+			ORDER BY id %v`, sinceCond, order),
+			threadID,
+		)
+	}
 
 	if err != nil {
 		return nil, err
@@ -293,12 +315,7 @@ func (f ForumRepository) GetPosts(slug string, id int, limit int, order string, 
 
 	posts := make([]models.Post, 0, limit)
 	post := models.Post{}
-	idx := 0
 	for rows.Next() {
-		if idx == limit {
-			break
-		}
-		idx++
 		err = rows.Scan(&post.Author, &post.Created, &post.Forum, &post.ID, &post.Message, &post.Parent, &post.Thread)
 		if err != nil {
 			return nil, err
@@ -310,10 +327,7 @@ func (f ForumRepository) GetPosts(slug string, id int, limit int, order string, 
 	return posts, nil
 }
 
-func (f ForumRepository) GetPostsTree(slug string, id int, limit int, order string, since string) ([]models.Post, error) {
-	var rows *sql.Rows
-	var err error
-
+func (f ForumRepository) GetPostsTree(slugOrID string, limit int, order string, since string) ([]models.Post, error) {
 	var desc bool
 	if order == "DESC" {
 		desc = true
@@ -321,34 +335,46 @@ func (f ForumRepository) GetPostsTree(slug string, id int, limit int, order stri
 		desc = false
 	}
 
+	threadID, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		threadID, err = f.CheckThreadBySlug(slugOrID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var (
+		rows *sql.Rows
+	)
+
 	if since == "" {
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE (thread_slug = $1 OR thread = $2) ORDER BY path DESC, id  DESC LIMIT $3;`,
-				slug, id, limit,
+				WHERE thread = $1 ORDER BY path DESC, id  DESC LIMIT $2;`,
+				threadID, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE (thread_slug = $1 OR thread = $2) ORDER BY path ASC, id  ASC LIMIT $3;`,
-				slug, id, limit,
+				WHERE thread = $1 ORDER BY path ASC, id  ASC LIMIT $2;`,
+				threadID, limit,
 			)
 		}
 	} else {
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE (thread_slug = $1 OR thread = $2) AND PATH < (SELECT path FROM posts WHERE id = $3)
-				ORDER BY path DESC, id  DESC LIMIT $4;`,
-				slug, id, since, limit,
+				WHERE thread = $1 AND PATH < (SELECT path FROM posts WHERE id = $2)
+				ORDER BY path DESC, id  DESC LIMIT $3;`,
+				threadID, since, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE (thread_slug = $1 OR thread = $2) AND PATH > (SELECT path FROM posts WHERE id = $3)
-				ORDER BY path ASC, id  ASC LIMIT $4;`,
-				slug, id, since, limit,
+				WHERE thread = $1 AND PATH > (SELECT path FROM posts WHERE id = $2)
+				ORDER BY path ASC, id  ASC LIMIT $3;`,
+				threadID, since, limit,
 			)
 		}
 	}
@@ -375,10 +401,7 @@ func (f ForumRepository) GetPostsTree(slug string, id int, limit int, order stri
 	return posts, nil
 }
 
-func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, order string, since string) ([]models.Post, error) {
-	var rows *sql.Rows
-	var err error
-
+func (f ForumRepository) GetPostsParentTree(slugOrID string, limit int, order string, since string) ([]models.Post, error) {
 	var desc bool
 	if order == "DESC" {
 		desc = true
@@ -386,36 +409,48 @@ func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, orde
 		desc = false
 	}
 
+	threadID, err := strconv.Atoi(slugOrID)
+	if err != nil {
+		threadID, err = f.CheckThreadBySlug(slugOrID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var (
+		rows *sql.Rows
+	)
+
 	if since == "" {
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE path[1] IN (SELECT id FROM posts WHERE (thread_slug = $1 OR thread = $2) AND parent = 0 ORDER BY id DESC LIMIT $3)
+				WHERE path[1] IN (SELECT id FROM posts WHERE thread = $1 AND parent = 0 ORDER BY id DESC LIMIT $2)
 				ORDER BY path[1] DESC, path, id;`,
-				slug, id, limit,
+				threadID, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE path[1] IN (SELECT id FROM posts WHERE (thread_slug = $1 OR thread = $2) AND parent = 0 ORDER BY id LIMIT $3)
+				WHERE path[1] IN (SELECT id FROM posts WHERE thread = $1 AND parent = 0 ORDER BY id LIMIT $2)
 				ORDER BY path, id;`,
-				slug, id, limit,
+				threadID, limit,
 			)
 		}
 	} else {
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE path[1] IN (SELECT id FROM posts WHERE (thread_slug = $1 OR thread = $2) AND parent = 0 AND path[1] <
-				(SELECT path[1] FROM posts WHERE id = $3) ORDER BY id DESC LIMIT $4) ORDER BY path[1] DESC, path, id;`,
-				slug, id, since, limit,
+				WHERE path[1] IN (SELECT id FROM posts WHERE thread = $1 AND parent = 0 AND path[1] <
+				(SELECT path[1] FROM posts WHERE id = $2) ORDER BY id DESC LIMIT $3) ORDER BY path[1] DESC, path, id;`,
+				threadID, since, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE path[1] IN (SELECT id FROM posts WHERE (thread_slug = $1 OR thread = $2) AND parent = 0 AND path[1] >
-				(SELECT path[1] FROM posts WHERE id = $3) ORDER BY id ASC LIMIT $4) ORDER BY path, id;`,
-				slug, id, since, limit,
+				WHERE path[1] IN (SELECT id FROM posts WHERE thread = $1 AND parent = 0 AND path[1] >
+				(SELECT path[1] FROM posts WHERE id = $2) ORDER BY id ASC LIMIT $3) ORDER BY path, id;`,
+				threadID, since, limit,
 			)
 		}
 	}
@@ -640,34 +675,29 @@ func (f ForumRepository) GetServiceInfo() (models.ServiceInfo, error) {
 	return info, nil
 }
 
-func (f ForumRepository) CheckThreadByID(id int) error {
+func (f ForumRepository) CheckThreadByID(id int) (int, error) {
 	err := f.db.QueryRow(
 		"SELECT id FROM threads WHERE id = $1",
 		id,
 	).Scan(&id)
 
-	return err
+	if err != nil {
+		return 0, err
+	}
+
+	return id, nil
 }
 
-func (f ForumRepository) CheckThreadBySlug(slug string) error {
+func (f ForumRepository) CheckThreadBySlug(slug string) (int, error) {
+	var id int
 	err := f.db.QueryRow(
 		"SELECT id FROM threads WHERE slug = $1",
 		slug,
-	).Scan(&slug)
-
-	return err
-}
-
-func (f ForumRepository) GetThreadIDBySlug(slug string) (int, error) {
-	var threadID int
-	err := f.db.QueryRow(
-		"SELECT id FROM threads WHERE slug = $1",
-		slug,
-	).Scan(&threadID)
+	).Scan(&id)
 
 	if err != nil {
 		return 0, err
 	}
 
-	return threadID, nil
+	return id, nil
 }

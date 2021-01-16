@@ -17,19 +17,19 @@ type Repository interface {
 	CreateThread(model *models.Thread) error
 	CheckForum(slug string) (string, error)
 	GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error)
-	CreatePosts(slug string, id int, posts []models.Post) ([]models.Post, error)
+	CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error)
 	GetThreadByID(id int) (models.Thread, error)
 	GetThreadBySlug(slug string) (models.Thread, error)
 	Vote(vote models.Vote) (models.Thread, error)
-	GetPosts(slug string, id int, limit int, order string, since string) ([]models.Post, error)
-	GetPostsTree(slug string, id int, limit int, order string, since string) ([]models.Post, error)
-	GetPostsParentTree(slug string, id int, limit int, order string, since string) ([]models.Post, error)
+	GetPosts(slugOrID string, limit int, order string, since string) ([]models.Post, error)
+	GetPostsTree(slugOrID string, limit int, order string, since string) ([]models.Post, error)
+	GetPostsParentTree(slugOrID string, limit int, order string, since string) ([]models.Post, error)
 	UpdateThread(thread models.Thread) (models.Thread, error)
 	GetUsersFromForum(slug string, limit int, since string, desc string) ([]models.User, error)
 	GetPostDetails(id string) (models.Post, error)
 	UpdatePost(post models.Post) (models.Post, error)
 	ClearService() error
 	GetServiceInfo() (models.ServiceInfo, error)
-	CheckThreadByID(id int) error
-	CheckThreadBySlug(slug string) error
+	CheckThreadByID(id int) (int, error)
+	CheckThreadBySlug(slug string) (int, error)
 }
