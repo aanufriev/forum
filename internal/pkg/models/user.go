@@ -2,6 +2,7 @@ package models
 
 //easyjson:json
 type User struct {
+	ID       int     `json:"-"`
 	Nickname string  `json:"nickname"`
 	Fullname *string `json:"fullname,omitempty"`
 	Email    *string `json:"email,omitempty"`

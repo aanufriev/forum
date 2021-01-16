@@ -1,17 +1,20 @@
+CREATE EXTENSION IF not EXISTS CITEXT;
+
 CREATE UNLOGGED TABLE IF NOT EXISTS users (
-    nickname TEXT NOT NULL UNIQUE PRIMARY KEY COLLATE "POSIX",
+    id SERIAL NOT NULL PRIMARY KEY,
+    nickname CITEXT COLLATE "C" NOT NULL UNIQUE,
     fullname TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
+    email CITEXT COLLATE "C" NOT NULL UNIQUE,
     about TEXT DEFAULT ''
 );
 
-CREATE UNIQUE INDEX email_unique_idx on users (LOWER(email));
-CREATE UNIQUE INDEX nickname_unique_idx on users (LOWER(nickname));
+CREATE UNIQUE INDEX users_email_idx on users (email);
+CREATE UNIQUE INDEX user_nickname_idx on users (nickname);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS forums (
     slug TEXT NOT NULL UNIQUE PRIMARY KEY,
     title TEXT NOT NULL,
-    user_nickname TEXT NOT NULL,
+    user_nickname CITEXT COLLATE "C" NOT NULL,
     thread_count INTEGER DEFAULT 0,
     post_count INTEGER DEFAULT 0,
 
@@ -23,7 +26,7 @@ CREATE INDEX forums_slug_idx on forums (slug, LOWER(slug));
 
 CREATE UNLOGGED TABLE IF NOT EXISTS threads (
     id SERIAL NOT NULL PRIMARY KEY,
-    author TEXT NOT NULL,
+    author CITEXT COLLATE "C" NOT NULL,
     created TIMESTAMPTZ,
     forum TEXT NOT NULL,
     msg TEXT NOT NULL,
@@ -40,7 +43,7 @@ CREATE UNIQUE INDEX thread_id_index ON threads (id);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS posts (
     id SERIAL NOT NULL PRIMARY KEY,
-    author TEXT NOT NULL,
+    author CITEXT COLLATE "C" NOT NULL,
     msg TEXT NOT NULL,
     parent INTEGER NOT NULL,
     thread INTEGER NOT NULL,
@@ -57,7 +60,7 @@ CREATE INDEX idx_path ON posts (path);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS thread_vote (
     thread_id INTEGER,
-    nickname TEXT NOT NULL,
+    nickname CITEXT COLLATE "C" NOT NULL,
     vote INTEGER NOT NULL,
 
     FOREIGN KEY (thread_id) REFERENCES threads (id),

@@ -104,7 +104,6 @@ func (u UserDelivery) Update(w http.ResponseWriter, r *http.Request) {
 
 	fullProfile, err := u.userUsecase.Update(profile)
 	if err != nil {
-
 		var msg models.Message
 		if errors.Is(err, user.ErrUserDoesntExists) {
 			w.WriteHeader(http.StatusNotFound)

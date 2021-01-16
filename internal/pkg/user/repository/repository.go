@@ -34,10 +34,10 @@ func (u UserRepository) Create(model models.User) error {
 func (u UserRepository) Get(nickname string) (models.User, error) {
 	var model models.User
 	err := u.db.QueryRow(
-		`SELECT nickname, fullname, email, about FROM users
-		WHERE lower(nickname) = lower($1)`,
+		`SELECT id, nickname, fullname, email, about FROM users
+		WHERE nickname = $1`,
 		nickname,
-	).Scan(&model.Nickname, &model.Fullname, &model.Email, &model.About)
+	).Scan(&model.ID, &model.Nickname, &model.Fullname, &model.Email, &model.About)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -52,7 +52,7 @@ func (u UserRepository) Get(nickname string) (models.User, error) {
 func (u UserRepository) GetUsersWithNicknameAndEmail(nickname, email string) ([]models.User, error) {
 	rows, err := u.db.Query(
 		`SELECT nickname, fullname, email, about FROM users
-		WHERE lower(nickname) = lower($1) OR lower(email) = lower($2)`,
+		WHERE nickname = $1 OR email = $2`,
 		nickname, email,
 	)
 	if err != nil {
@@ -60,7 +60,7 @@ func (u UserRepository) GetUsersWithNicknameAndEmail(nickname, email string) ([]
 	}
 	defer rows.Close()
 
-	users := make([]models.User, 0, 5)
+	users := make([]models.User, 0, 2)
 	user := models.User{}
 	for rows.Next() {
 		err = rows.Scan(&user.Nickname, &user.Fullname, &user.Email, &user.About)
@@ -92,10 +92,10 @@ func (u UserRepository) Update(model models.User) (models.User, error) {
 		model.About = userFromDB.About
 	}
 
-	result, err := u.db.Exec(
+	_, err = u.db.Exec(
 		`UPDATE users SET fullname = $1, email = $2, about = $3
-		WHERE lower(nickname) = lower($4)`,
-		model.Fullname, model.Email, model.About, model.Nickname,
+		WHERE id = $4`,
+		model.Fullname, model.Email, model.About, userFromDB.ID,
 	)
 
 	if err != nil {
@@ -105,21 +105,12 @@ func (u UserRepository) Update(model models.User) (models.User, error) {
 		return models.User{}, err
 	}
 
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return models.User{}, err
-	}
-
-	if affected == 0 {
-		return models.User{}, user.ErrUserDoesntExists
-	}
-
 	return model, nil
 }
 
 func (u UserRepository) CheckIfUserExists(nickname string) (string, error) {
 	err := u.db.QueryRow(
-		"SELECT nickname FROM users WHERE lower(nickname) = lower($1)",
+		"SELECT nickname FROM users WHERE nickname = $1",
 		nickname,
 	).Scan(&nickname)
 
@@ -129,7 +120,7 @@ func (u UserRepository) CheckIfUserExists(nickname string) (string, error) {
 func (u UserRepository) GetUserNicknameWithEmail(email string) (string, error) {
 	var nickname string
 	err := u.db.QueryRow(
-		"SELECT nickname FROM users WHERE lower(email) = lower($1)",
+		"SELECT nickname FROM users WHERE email = $1",
 		email,
 	).Scan(&nickname)
 
