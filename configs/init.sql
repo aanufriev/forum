@@ -8,11 +8,12 @@ CREATE UNLOGGED TABLE IF NOT EXISTS users (
     about TEXT DEFAULT ''
 );
 
-CREATE UNIQUE INDEX users_email_idx on users (email);
-CREATE UNIQUE INDEX user_nickname_idx on users (nickname);
+CREATE INDEX users_email_idx on users using hash (email);
+CREATE INDEX user_nickname_idx on users using hash (nickname);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS forums (
-    slug TEXT NOT NULL UNIQUE PRIMARY KEY,
+    id SERIAL NOT NULL PRIMARY KEY,
+    slug CITEXT COLLATE "C" NOT NULL UNIQUE,
     title TEXT NOT NULL,
     user_nickname CITEXT COLLATE "C" NOT NULL,
     thread_count INTEGER DEFAULT 0,
@@ -21,24 +22,35 @@ CREATE UNLOGGED TABLE IF NOT EXISTS forums (
     FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );
 
-CREATE UNIQUE INDEX slug_unique_idx on forums (LOWER(slug));
-CREATE INDEX forums_slug_idx on forums (slug, LOWER(slug));
+CREATE UNIQUE INDEX forum_slug_idx on forums (slug);
+
+CREATE UNLOGGED TABLE IF NOT EXISTS forum_user (
+    forum_slug CITEXT COLLATE "C" NOT NULL,
+    nickname CITEXT COLLATE "C" NOT NULL,
+    UNIQUE (forum_slug, nickname),
+
+    FOREIGN KEY (forum_slug) REFERENCES forums (slug) ON UPDATE CASCADE,
+    FOREIGN KEY (nickname) REFERENCES users (nickname) ON UPDATE CASCADE
+);
+
+CREATE INDEX forum_user_idx on forum_user (forum_slug, nickname);
+CREATE INDEX nickname_idx on forum_user (nickname);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS threads (
     id SERIAL NOT NULL PRIMARY KEY,
     author CITEXT COLLATE "C" NOT NULL,
     created TIMESTAMPTZ,
-    forum TEXT NOT NULL,
+    forum CITEXT COLLATE "C" NOT NULL,
     msg TEXT NOT NULL,
     title TEXT NOT NULL,
-    slug TEXT DEFAULT '',
+    slug CITEXT COLLATE "C" DEFAULT '',
     votes INTEGER DEFAULT 0,
 
     FOREIGN KEY (author) REFERENCES users (nickname) ON UPDATE CASCADE,
     FOREIGN KEY (forum) REFERENCES forums (slug) ON UPDATE CASCADE
 );
 
-CREATE UNIQUE INDEX thread_slug_unique_idx on threads (LOWER(slug));
+CREATE UNIQUE INDEX thread_slug_unique_idx on threads (slug);
 CREATE UNIQUE INDEX thread_id_index ON threads (id);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS posts (
@@ -47,9 +59,9 @@ CREATE UNLOGGED TABLE IF NOT EXISTS posts (
     msg TEXT NOT NULL,
     parent INTEGER NOT NULL,
     thread INTEGER NOT NULL,
-    thread_slug TEXT NOT NULL,
+    thread_slug CITEXT COLLATE "C" NOT NULL,
     created TIMESTAMPTZ,
-    forum TEXT NOT NULL,
+    forum CITEXT COLLATE "C" NOT NULL,
     isEdited BOOLEAN DEFAULT false,
     path INTEGER[] DEFAULT ARRAY []::INTEGER[],
 
@@ -67,7 +79,8 @@ CREATE UNLOGGED TABLE IF NOT EXISTS thread_vote (
     FOREIGN KEY (nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );
 
-CREATE INDEX votes_user_thread ON thread_vote (thread_id, LOWER(nickname));
+CREATE INDEX votes_user_thread ON thread_vote (thread_id, nickname);
+
 
 CREATE OR REPLACE FUNCTION add_votes_to_thread() RETURNS TRIGGER AS
 $add_votes_to_thread$
@@ -123,3 +136,41 @@ CREATE TRIGGER update_post_path
     ON posts
     FOR EACH ROW
 EXECUTE PROCEDURE update_path();
+
+
+CREATE OR REPLACE FUNCTION update_thread_count() RETURNS TRIGGER AS
+$update_thread_count$
+BEGIN
+    UPDATE forums SET thread_count = thread_count + 1 WHERE slug = new.forum;
+    RETURN new;
+end
+$update_thread_count$ LANGUAGE plpgsql;
+
+CREATE TRIGGER forum_thread_count
+    AFTER INSERT
+    ON threads
+    FOR EACH ROW
+EXECUTE PROCEDURE update_thread_count();
+
+
+CREATE OR REPLACE FUNCTION add_user_to_forum() RETURNS TRIGGER AS
+$add_user_to_forum$
+BEGIN
+    INSERT INTO forum_user (forum_slug, nickname)
+    VALUES (new.forum, new.author)
+    ON CONFLICT DO NOTHING;
+    RETURN new;
+END;
+$add_user_to_forum$ LANGUAGE plpgsql;
+
+CREATE TRIGGER add_user_to_forum_on_thread_creation
+    AFTER INSERT
+    ON threads
+    FOR EACH ROW
+EXECUTE PROCEDURE add_user_to_forum();
+
+CREATE TRIGGER add_user_to_forum_on_post_creation
+    AFTER INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE add_user_to_forum();

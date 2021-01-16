@@ -38,7 +38,7 @@ func (f ForumRepository) Get(slug string) (models.Forum, error) {
 	var model models.Forum
 	err := f.db.QueryRow(
 		`SELECT slug, title, user_nickname, thread_count, post_count FROM forums
-		WHERE lower(slug) = lower($1)`,
+		WHERE slug = $1`,
 		slug,
 	).Scan(&model.Slug, &model.Title, &model.User, &model.Threads, &model.Posts)
 
@@ -50,22 +50,12 @@ func (f ForumRepository) Get(slug string) (models.Forum, error) {
 }
 
 func (f ForumRepository) CreateThread(thread *models.Thread) error {
-	var forumSlug string
-
-	err := f.db.QueryRow(
-		"SELECT slug FROM forums WHERE lower(slug) = lower($1)",
-		thread.Forum,
-	).Scan(&forumSlug)
-
-	if err == sql.ErrNoRows {
-		return forum.ErrForumDoesntExists
-	}
+	var err error
+	thread.Forum, err = f.CheckForum(thread.Forum)
 
 	if err != nil {
-		return err
+		return forum.ErrForumDoesntExists
 	}
-
-	thread.Forum = forumSlug
 
 	err = f.db.QueryRow(
 		`INSERT INTO threads (author, created, forum, msg, title, slug)
@@ -77,21 +67,12 @@ func (f ForumRepository) CreateThread(thread *models.Thread) error {
 		return fmt.Errorf("couldn't create thread. Error: %w", err)
 	}
 
-	_, err = f.db.Exec(
-		"UPDATE forums SET thread_count = thread_count + 1 WHERE slug = $1",
-		forumSlug,
-	)
-
-	if err != nil {
-		return fmt.Errorf("couldn't update thread count in forum. Error: %w", err)
-	}
-
 	return nil
 }
 
 func (f ForumRepository) CheckForum(slug string) (string, error) {
 	err := f.db.QueryRow(
-		"SELECT slug FROM forums WHERE lower(slug) = lower($1)",
+		"SELECT slug FROM forums WHERE slug = $1",
 		slug,
 	).Scan(&slug)
 
@@ -103,8 +84,7 @@ func (f ForumRepository) CheckForum(slug string) (string, error) {
 }
 
 func (f ForumRepository) GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error) {
-	query := `SELECT author, created, forum, id, msg, slug, title, votes FROM threads
-	WHERE lower(forum) = lower($1)`
+	query := "SELECT author, created, forum, id, msg, slug, title, votes FROM threads WHERE forum = $1"
 
 	args := make([]interface{}, 0, 4)
 	args = append(args, slug)
@@ -128,25 +108,21 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 	}
 	query += fmt.Sprintf(" ORDER BY created %v", desc)
 
+	limitInt, err := strconv.Atoi(limit)
+	if err != nil {
+		return nil, err
+	}
+	query += fmt.Sprintf(" LIMIT %v", limitInt)
+
 	rows, err := f.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	limitInt, err := strconv.Atoi(limit)
-	if err != nil {
-		return nil, err
-	}
-
 	threads := make([]models.Thread, 0, limitInt)
 	var thread models.Thread
-	var idx int
 	for rows.Next() {
-		idx++
-		if idx == limitInt+1 {
-			break
-		}
 		err = rows.Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
 		if err != nil {
 			return nil, err
@@ -164,7 +140,7 @@ func (f ForumRepository) CreatePosts(slug string, id int, posts []models.Post) (
 
 	err := f.db.QueryRow(
 		`SELECT forum, id, slug FROM threads
-		WHERE lower(slug) = lower($1) OR id = $2`,
+		WHERE slug = $1 OR id = $2`,
 		slug, id,
 	).Scan(&forum, &id, &slugNull)
 
@@ -208,7 +184,7 @@ func (f ForumRepository) GetThread(slug string, id int) (models.Thread, error) {
 	var thread models.Thread
 	err := f.db.QueryRow(
 		`SELECT author, created, forum, id, msg, slug, title, votes FROM threads
-		WHERE lower(slug) = lower($1) or id = $2`,
+		WHERE slug = $1 or id = $2`,
 		slug, id,
 	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title, &thread.Votes)
 
@@ -228,7 +204,7 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 	var voteValue int
 	err = f.db.QueryRow(
 		`SELECT vote FROM thread_vote
-		WHERE lower(nickname) = lower($1) AND thread_id = $2`,
+		WHERE nickname = $1 AND thread_id = $2`,
 		vote.Nickname, thread.ID,
 	).Scan(&voteValue)
 
@@ -258,7 +234,7 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 
 	_, err = f.db.Exec(
 		`UPDATE thread_vote SET vote = $1
-		WHERE lower(nickname) = lower($2) AND thread_id = $3`,
+		WHERE nickname = $2 AND thread_id = $3`,
 		vote.Voice, vote.Nickname, thread.ID,
 	)
 
@@ -280,7 +256,7 @@ func (f ForumRepository) GetPosts(slug string, id int, limit int, order string, 
 	}
 	rows, err := f.db.Query(
 		fmt.Sprintf(`SELECT author, created, forum, id, msg, parent, thread FROM posts
-		WHERE (lower(thread_slug) = lower($1) OR thread = $2) %v
+		WHERE (thread_slug = $1 OR thread = $2) %v
 		ORDER BY id %v`, sinceCond, order),
 		slug, id,
 	)
@@ -324,13 +300,13 @@ func (f ForumRepository) GetPostsTree(slug string, id int, limit int, order stri
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE (lower(thread_slug) = lower($1) OR thread = $2) ORDER BY path DESC, id  DESC LIMIT $3;`,
+				WHERE (thread_slug = $1 OR thread = $2) ORDER BY path DESC, id  DESC LIMIT $3;`,
 				slug, id, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE (lower(thread_slug) = lower($1) OR thread = $2) ORDER BY path ASC, id  ASC LIMIT $3;`,
+				WHERE (thread_slug = $1 OR thread = $2) ORDER BY path ASC, id  ASC LIMIT $3;`,
 				slug, id, limit,
 			)
 		}
@@ -338,14 +314,14 @@ func (f ForumRepository) GetPostsTree(slug string, id int, limit int, order stri
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND PATH < (SELECT path FROM posts WHERE id = $3)
+				WHERE (thread_slug = $1 OR thread = $2) AND PATH < (SELECT path FROM posts WHERE id = $3)
 				ORDER BY path DESC, id  DESC LIMIT $4;`,
 				slug, id, since, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND PATH > (SELECT path FROM posts WHERE id = $3)
+				WHERE (thread_slug = $1 OR thread = $2) AND PATH > (SELECT path FROM posts WHERE id = $3)
 				ORDER BY path ASC, id  ASC LIMIT $4;`,
 				slug, id, since, limit,
 			)
@@ -389,14 +365,14 @@ func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, orde
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE path[1] IN (SELECT id FROM posts WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0 ORDER BY id DESC LIMIT $3)
+				WHERE path[1] IN (SELECT id FROM posts WHERE (thread_slug = $1 OR thread = $2) AND parent = 0 ORDER BY id DESC LIMIT $3)
 				ORDER BY path[1] DESC, path, id;`,
 				slug, id, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE path[1] IN (SELECT id FROM posts WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0 ORDER BY id LIMIT $3)
+				WHERE path[1] IN (SELECT id FROM posts WHERE (thread_slug = $1 OR thread = $2) AND parent = 0 ORDER BY id LIMIT $3)
 				ORDER BY path, id;`,
 				slug, id, limit,
 			)
@@ -405,14 +381,14 @@ func (f ForumRepository) GetPostsParentTree(slug string, id int, limit int, orde
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE path[1] IN (SELECT id FROM posts WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0 AND path[1] <
+				WHERE path[1] IN (SELECT id FROM posts WHERE (thread_slug = $1 OR thread = $2) AND parent = 0 AND path[1] <
 				(SELECT path[1] FROM posts WHERE id = $3) ORDER BY id DESC LIMIT $4) ORDER BY path[1] DESC, path, id;`,
 				slug, id, since, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE path[1] IN (SELECT id FROM posts WHERE (lower(thread_slug) = lower($1) OR thread = $2) AND parent = 0 AND path[1] >
+				WHERE path[1] IN (SELECT id FROM posts WHERE (thread_slug = $1 OR thread = $2) AND parent = 0 AND path[1] >
 				(SELECT path[1] FROM posts WHERE id = $3) ORDER BY id ASC LIMIT $4) ORDER BY path, id;`,
 				slug, id, since, limit,
 			)
@@ -460,7 +436,7 @@ func (f ForumRepository) UpdateThread(thread models.Thread) (models.Thread, erro
 
 	err := f.db.QueryRow(
 		`UPDATE threads SET title = $1, msg = $2
-		WHERE lower(slug) = lower($3) OR id = $4
+		WHERE slug = $3 OR id = $4
 		RETURNING author, created, forum, id, msg, slug, title`,
 		thread.Title, thread.Message, thread.Slug, thread.ID,
 	).Scan(&thread.Author, &thread.Created, &thread.Forum, &thread.ID, &thread.Message, &thread.Slug, &thread.Title)
@@ -486,26 +462,43 @@ func (f ForumRepository) GetUsersFromForum(slug string, limit int, since string,
 	}
 
 	if since != "" {
-		rows, err = f.db.Query(
-			fmt.Sprintf(`SELECT u.about, u.email, u.fullname, u.nickname FROM
-			(SELECT DISTINCT author FROM threads WHERE lower(forum) = lower($1)
-			UNION
-			SELECT DISTINCT author FROM posts WHERE lower(forum) = lower($1)) AS tp
-			JOIN users AS u ON tp.author = u.nickname
-			WHERE lower(u.nickname) %v lower($2)
-			ORDER BY lower(u.nickname) %v`, compare, desc),
-			slug, since,
-		)
+		if limit != 0 {
+			rows, err = f.db.Query(
+				fmt.Sprintf(`SELECT u.about, u.email, u.fullname, u.nickname FROM users AS u
+				JOIN forum_user AS fu ON u.nickname = fu.nickname
+				WHERE fu.forum_slug = $1 AND fu.nickname %v $2
+				ORDER BY u.nickname %v
+				LIMIT %v`, compare, desc, limit),
+				slug, since,
+			)
+		} else {
+			rows, err = f.db.Query(
+				fmt.Sprintf(`SELECT u.about, u.email, u.fullname, u.nickname FROM users AS u
+				JOIN forum_user AS fu ON u.nickname = fu.nickname
+				WHERE fu.forum_slug = $1 AND fu.nickname %v $2
+				ORDER BY u.nickname %v`, compare, desc),
+				slug, since,
+			)
+		}
 	} else {
-		rows, err = f.db.Query(
-			fmt.Sprintf(`SELECT u.about, u.email, u.fullname, u.nickname FROM
-			(SELECT DISTINCT author FROM threads WHERE lower(forum) = lower($1)
-			UNION
-			SELECT DISTINCT author FROM posts WHERE lower(forum) = lower($1)) AS tp
-			JOIN users AS u ON tp.author = u.nickname
-			ORDER BY lower(u.nickname) %v`, desc),
-			slug,
-		)
+		if limit != 0 {
+			rows, err = f.db.Query(
+				fmt.Sprintf(`SELECT u.about, u.email, u.fullname, u.nickname FROM users AS u
+				JOIN forum_user AS fu ON u.nickname = fu.nickname
+				WHERE fu.forum_slug = $1
+				ORDER BY u.nickname %v
+				LIMIT %v`, desc, limit),
+				slug,
+			)
+		} else {
+			rows, err = f.db.Query(
+				fmt.Sprintf(`SELECT u.about, u.email, u.fullname, u.nickname FROM users AS u
+				JOIN forum_user AS fu ON u.nickname = fu.nickname
+				WHERE fu.forum_slug = $1
+				ORDER BY u.nickname %v`, desc),
+				slug,
+			)
+		}
 	}
 
 	if err != nil {
@@ -513,15 +506,9 @@ func (f ForumRepository) GetUsersFromForum(slug string, limit int, since string,
 	}
 	defer rows.Close()
 
-	i := 0
-	users := make([]models.User, 0, 10)
+	users := make([]models.User, 0, limit)
 	user := models.User{}
 	for rows.Next() {
-		if i == limit && limit != 0 {
-			break
-		}
-		i++
-
 		err = rows.Scan(&user.About, &user.Email, &user.Fullname, &user.Nickname)
 		if err != nil {
 			return nil, err
@@ -572,7 +559,7 @@ func (f ForumRepository) UpdatePost(post models.Post) (models.Post, error) {
 
 func (f ForumRepository) ClearService() error {
 	_, err := f.db.Exec(
-		"TRUNCATE TABLE users, forums, threads, thread_vote, posts",
+		"TRUNCATE TABLE users, forums, forum_user, threads, thread_vote, posts",
 	)
 
 	if err != nil {
@@ -621,7 +608,7 @@ func (f ForumRepository) GetServiceInfo() (models.ServiceInfo, error) {
 
 func (f ForumRepository) CheckThread(slug string, id int) error {
 	err := f.db.QueryRow(
-		"SELECT id FROM threads WHERE lower(slug) = lower($1) OR id = $2",
+		"SELECT id FROM threads WHERE slug = $1 OR id = $2",
 		slug, id,
 	).Scan(&id)
 
@@ -631,7 +618,7 @@ func (f ForumRepository) CheckThread(slug string, id int) error {
 func (f ForumRepository) GetThreadIDBySlug(slug string) (int, error) {
 	var threadID int
 	err := f.db.QueryRow(
-		"SELECT id FROM threads WHERE lower(slug) = lower($1)",
+		"SELECT id FROM threads WHERE slug = $1",
 		slug,
 	).Scan(&threadID)
 

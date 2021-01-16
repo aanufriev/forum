@@ -171,7 +171,12 @@ func easyjsonD2b7633eEncodeGithubComAanufrievForumInternalPkgModels1(out *jwrite
 	_ = first
 	{
 		const prefix string = ",\"nickname\":"
-		out.RawString(prefix[1:])
+		if first {
+			first = false
+			out.RawString(prefix[1:])
+		} else {
+			out.RawString(prefix)
+		}
 		out.String(string(in.Nickname))
 	}
 	if in.Fullname != nil {
