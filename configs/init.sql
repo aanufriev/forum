@@ -70,7 +70,10 @@ CREATE UNLOGGED TABLE IF NOT EXISTS posts (
     FOREIGN KEY (author) REFERENCES users (nickname) ON UPDATE CASCADE
 );
 
-CREATE INDEX idx_path ON posts (path);
+CREATE INDEX posts_path_idx ON posts (path);
+CREATE INDEX posts_thread_idx ON posts (thread);
+CREATE INDEX posts_id_idx ON posts (id);
+CREATE INDEX posts_thread_id_path1_parent ON posts (thread, id, path[1], parent);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS thread_vote (
     thread_id INTEGER,

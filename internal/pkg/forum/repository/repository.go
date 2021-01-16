@@ -365,14 +365,14 @@ func (f ForumRepository) GetPostsTree(slugOrID string, limit int, order string, 
 		if desc {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE thread = $1 AND PATH < (SELECT path FROM posts WHERE id = $2)
+				WHERE thread = $1 AND path < (SELECT path FROM posts WHERE id = $2)
 				ORDER BY path DESC, id  DESC LIMIT $3;`,
 				threadID, since, limit,
 			)
 		} else {
 			rows, err = f.db.Query(
 				`SELECT author, created, forum, id, msg, parent, thread FROM posts
-				WHERE thread = $1 AND PATH > (SELECT path FROM posts WHERE id = $2)
+				WHERE thread = $1 AND path > (SELECT path FROM posts WHERE id = $2)
 				ORDER BY path ASC, id  ASC LIMIT $3;`,
 				threadID, since, limit,
 			)
