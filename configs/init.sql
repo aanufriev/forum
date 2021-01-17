@@ -42,7 +42,8 @@ CREATE UNLOGGED TABLE IF NOT EXISTS forums (
     FOREIGN KEY (user_nickname) REFERENCES users (nickname) ON UPDATE CASCADE
 );
 
-CREATE UNIQUE INDEX forums_slug_idx on forums (slug);
+CREATE INDEX forums_all_idx ON forums (slug, title, user_nickname, thread_count, post_count);
+CREATE INDEX forums_slug_idx on forums using hash (slug);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS forum_user (
     forum_slug CITEXT COLLATE "C" NOT NULL,
@@ -90,7 +91,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS posts (
 );
 
 CREATE INDEX posts_path_idx ON posts (path);
-CREATE INDEX posts_thread_idx ON posts (thread);
+CREATE INDEX posts_thread_id_idx ON posts (thread, id);
 CREATE INDEX posts_id_idx ON posts (id);
 CREATE INDEX posts_thread_id_path1_parent ON posts (thread, id, path[1], parent);
 
