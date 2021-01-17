@@ -197,14 +197,7 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 
 	slugOrID := ctx.UserValue("slug_or_id").(string)
 
-	posts := []models.Post{}
-	err := json.Unmarshal(ctx.PostBody(), &posts)
-	if err != nil {
-		ctx.SetStatusCode(http.StatusBadRequest)
-		return
-	}
-
-	err = f.forumUsecase.CheckThread(slugOrID)
+	err := f.forumUsecase.CheckThread(slugOrID)
 	if err != nil {
 		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
@@ -212,6 +205,13 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 		}
 
 		_ = json.NewEncoder(ctx).Encode(msg)
+		return
+	}
+
+	posts := []models.Post{}
+	err = json.Unmarshal(ctx.PostBody(), &posts)
+	if err != nil {
+		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
 

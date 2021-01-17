@@ -181,21 +181,44 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 		}
 	}
 
+	query := "INSERT INTO posts (author, msg, parent, thread, forum, created) VALUES "
 	created := strfmt.DateTime(time.Now())
 	for idx := range posts {
 		posts[idx].Forum = forum
 		posts[idx].Thread = threadID
 		posts[idx].Created = created
 
-		err := f.db.QueryRow(`
-			INSERT INTO posts (author, msg, parent, thread, forum, created)
-			VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		query += fmt.Sprintf(
+			"('%v', '%v', %v, %v, '%v', '%v'),",
 			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
-		).Scan(&posts[idx].ID)
+		)
 
-		if err != nil {
+		// err := f.db.QueryRow(`
+		// 	INSERT INTO posts (author, msg, parent, thread, forum, created)
+		// 	VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		// 	posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
+		// ).Scan(&posts[idx].ID)
+
+		// if err != nil {
+		// 	return nil, err
+		// }
+	}
+
+	query = query[:len(query)-1]
+	query += " RETURNING id, created"
+
+	rows, err := f.db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	idx := 0
+	for rows.Next() {
+		if err := rows.Scan(&posts[idx].ID, &posts[idx].Created); err != nil {
 			return nil, err
 		}
+
+		idx++
 	}
 
 	return posts, nil
