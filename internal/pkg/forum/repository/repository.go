@@ -205,7 +205,7 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 	}
 
 	query = query[:len(query)-1]
-	query += " RETURNING id, created"
+	query += " RETURNING id"
 
 	rows, err := f.db.Query(query)
 	if err != nil {
@@ -214,7 +214,7 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 
 	idx := 0
 	for rows.Next() {
-		if err := rows.Scan(&posts[idx].ID, &posts[idx].Created); err != nil {
+		if err := rows.Scan(&posts[idx].ID); err != nil {
 			return nil, err
 		}
 
