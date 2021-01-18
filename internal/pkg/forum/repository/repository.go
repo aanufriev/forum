@@ -211,6 +211,7 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	idx := 0
 	for rows.Next() {
