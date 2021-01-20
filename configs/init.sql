@@ -177,22 +177,11 @@ EXECUTE PROCEDURE update_thread_votes();
 CREATE OR REPLACE FUNCTION set_post_path()
     RETURNS TRIGGER AS
 $set_post_path$
-DECLARE
-    parent_thread BIGINT;
-    parent_path   BIGINT[];
 BEGIN
     IF (new.parent = 0) THEN
-        new.path := new.path || new.id;
+        new.path = new.path || new.id;
     ELSE
-        SELECT thread, path
-        FROM posts p
-        WHERE p.thread = new.thread
-          AND p.id = new.parent
-        INTO parent_thread , parent_path;
-        IF parent_thread != new.thread OR NOT FOUND THEN
-            RAISE EXCEPTION USING ERRCODE = '00404';
-        END IF;
-        new.path := parent_path || new.id;
+        new.path = (SELECT path FROM posts WHERE id = new.parent) || new.id;
     END IF;
     RETURN new;
 END;

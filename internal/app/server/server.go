@@ -23,7 +23,7 @@ func StartApiServer() {
 			Port:     5432,
 			Database: "forum",
 		},
-		MaxConnections: 100,
+		MaxConnections: 10000,
 	})
 
 	if err != nil {
