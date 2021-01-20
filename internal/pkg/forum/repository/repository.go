@@ -175,6 +175,7 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 	}
 
 	query := "INSERT INTO posts (author, msg, parent, thread, forum, created) VALUES "
+	queryUsers := "INSERT INTO forum_user (nickname, forum_slug) VALUES "
 	created := strfmt.DateTime(time.Now())
 	for idx := range posts {
 		posts[idx].Forum = forum
@@ -185,10 +186,28 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 			"('%v', '%v', %v, %v, '%v', '%v'),",
 			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
 		)
+
+		queryUsers += fmt.Sprintf(
+			"('%v', '%v'),",
+			posts[idx].Author, forum,
+		)
+
+		// err := f.db.QueryRow(`
+		// 	INSERT INTO posts (author, msg, parent, thread, forum, created)
+		// 	VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		// 	posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
+		// ).Scan(&posts[idx].ID)
+
+		// if err != nil {
+		// 	return nil, err
+		// }
 	}
 
 	query = query[:len(query)-1]
 	query += " RETURNING id"
+
+	queryUsers = queryUsers[:len(queryUsers)-1]
+	queryUsers += " ON CONFLICT DO NOTHING"
 
 	rows, err := f.db.Query(query)
 	if err != nil {
@@ -196,13 +215,32 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 	}
 	defer rows.Close()
 
-	for idx := range posts {
-		if !rows.Next() {
-			break
-		}
+	idx := 0
+	// for idx := range posts {
+	for rows.Next() {
+		// if !rows.Next() {
+		// 	break
+		// }
 		if err := rows.Scan(&posts[idx].ID); err != nil {
 			return nil, err
 		}
+		idx++
+	}
+
+	fmt.Printf("LEN POSTS: %v. LEN ROWS: %v\n", len(posts), idx)
+
+	_, err = f.db.Exec(queryUsers)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = f.db.Exec(
+		"UPDATE forums SET post_count = post_count + $1 WHERE slug = $2",
+		len(posts), forum,
+	)
+
+	if err != nil {
+		return nil, err
 	}
 
 	return posts, nil
