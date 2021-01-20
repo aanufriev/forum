@@ -115,7 +115,11 @@ func (u UserRepository) CheckIfUserExists(nickname string) (string, error) {
 		nickname,
 	).Scan(&nickname)
 
-	return nickname, err
+	if err != nil {
+		return "", fmt.Errorf("user doesnt exist: %w", err)
+	}
+
+	return nickname, nil
 }
 
 func (u UserRepository) GetUserNicknameWithEmail(email string) (string, error) {
