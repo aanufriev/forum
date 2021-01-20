@@ -135,7 +135,6 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 }
 
 func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error) {
-	// var thread models.Thread
 	var (
 		forum    string
 		threadID int
@@ -144,13 +143,11 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 
 	threadID, err = strconv.Atoi(slugOrID)
 	if err != nil {
-		// thread, err = f.GetThreadBySlug(slugOrID)
 		err = f.db.QueryRow(`
 			SELECT forum, id FROM threads WHERE slug = $1`,
 			slugOrID,
 		).Scan(&forum, &threadID)
 	} else {
-		// thread, err = f.GetThreadByID(id)
 		err = f.db.QueryRow(
 			"SELECT forum FROM threads WHERE id = $1",
 			threadID,
@@ -162,10 +159,6 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 	}
 
 	if len(posts) > 0 && posts[0].Parent != 0 {
-		// parentPost, err := f.GetPostDetails(strconv.Itoa(posts[0].Parent))
-		// if err != nil {
-		// 	return nil, err
-		// }
 		var parentThread int
 		err = f.db.QueryRow(
 			"SELECT thread FROM posts WHERE id = $1",
@@ -192,16 +185,6 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 			"('%v', '%v', %v, %v, '%v', '%v'),",
 			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
 		)
-
-		// err := f.db.QueryRow(`
-		// 	INSERT INTO posts (author, msg, parent, thread, forum, created)
-		// 	VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		// 	posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
-		// ).Scan(&posts[idx].ID)
-
-		// if err != nil {
-		// 	return nil, err
-		// }
 	}
 
 	query = query[:len(query)-1]
@@ -213,13 +196,13 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 	}
 	defer rows.Close()
 
-	idx := 0
-	for rows.Next() {
+	for idx := range posts {
+		if !rows.Next() {
+			break
+		}
 		if err := rows.Scan(&posts[idx].ID); err != nil {
 			return nil, err
 		}
-
-		idx++
 	}
 
 	return posts, nil
@@ -274,8 +257,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 	var voteValue int
 	err = f.db.QueryRow(
 		`SELECT vote FROM thread_vote
-		WHERE user_id = $1 AND thread_id = $2`,
-		vote.UserID, thread.ID,
+		WHERE nickname = $1 AND thread_id = $2`,
+		vote.Nickname, thread.ID,
 	).Scan(&voteValue)
 
 	if err != nil && err != pgx.ErrNoRows {
@@ -284,8 +267,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 
 	if err == pgx.ErrNoRows {
 		_, err = f.db.Exec(
-			"INSERT INTO thread_vote (user_id, thread_id, vote) VALUES($1, $2, $3)",
-			vote.UserID, thread.ID, vote.Voice,
+			"INSERT INTO thread_vote (nickname, thread_id, vote) VALUES($1, $2, $3)",
+			vote.Nickname, thread.ID, vote.Voice,
 		)
 
 		if err != nil {
@@ -304,8 +287,8 @@ func (f ForumRepository) Vote(vote models.Vote) (models.Thread, error) {
 
 	_, err = f.db.Exec(
 		`UPDATE thread_vote SET vote = $1
-		WHERE user_id = $2 AND thread_id = $3`,
-		vote.Voice, vote.UserID, thread.ID,
+		WHERE nickname = $2 AND thread_id = $3`,
+		vote.Voice, vote.Nickname, thread.ID,
 	)
 
 	if err != nil {

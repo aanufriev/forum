@@ -208,7 +208,7 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	posts := []models.Post{}
+	posts := make([]models.Post, 0)
 	err = json.Unmarshal(ctx.PostBody(), &posts)
 	if err != nil {
 		ctx.SetStatusCode(http.StatusBadRequest)
@@ -221,11 +221,11 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	for idx := range posts {
-		_, err = f.userUsecase.CheckIfUserExists(posts[idx].Author)
+	for _, post := range posts {
+		_, err = f.userUsecase.CheckIfUserExists(post.Author)
 		if err != nil {
 			msg := models.Message{
-				Text: fmt.Sprintf("Can't find post author by nickname: %v", posts[idx].Author),
+				Text: fmt.Sprintf("Can't find post author by nickname: %v", post.Author),
 			}
 
 			ctx.SetStatusCode(http.StatusNotFound)
@@ -287,18 +287,6 @@ func (f ForumDelivery) Vote(ctx *fasthttp.RequestCtx) {
 		ctx.SetStatusCode(http.StatusBadRequest)
 		return
 	}
-
-	userID, err := f.userUsecase.GetUserIDByNickname(vote.Nickname)
-	if err != nil {
-		msg := models.Message{
-			Text: fmt.Sprintf("Can't find user with id #%v\n", vote.Nickname),
-		}
-
-		ctx.SetStatusCode(http.StatusNotFound)
-		_ = json.NewEncoder(ctx).Encode(msg)
-		return
-	}
-	vote.UserID = userID
 
 	vote.Slug = slugOrID
 	id, err := strconv.Atoi(slugOrID)
