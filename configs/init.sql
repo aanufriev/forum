@@ -230,11 +230,11 @@ BEGIN
 END;
 $update_forum_posts$ LANGUAGE plpgsql;
 
--- CREATE TRIGGER update_forum_posts
---     BEFORE INSERT
---     ON posts
---     FOR EACH ROW
--- EXECUTE PROCEDURE update_forum_posts();
+CREATE TRIGGER update_forum_posts
+    BEFORE INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE update_forum_posts();
 
 
 CREATE OR REPLACE FUNCTION add_forum_user()
@@ -254,8 +254,8 @@ CREATE TRIGGER add_forum_user_new_thread
     FOR EACH ROW
 EXECUTE PROCEDURE add_forum_user();
 
--- CREATE TRIGGER add_forum_user_new_post
---     AFTER INSERT
---     ON posts
---     FOR EACH ROW
--- EXECUTE PROCEDURE add_forum_user();
+CREATE TRIGGER add_forum_user_new_post
+    AFTER INSERT
+    ON posts
+    FOR EACH ROW
+EXECUTE PROCEDURE add_forum_user();

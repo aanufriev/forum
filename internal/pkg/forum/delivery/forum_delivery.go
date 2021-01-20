@@ -240,6 +240,7 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 
 	posts, err = f.forumUsecase.CreatePosts(slugOrID, posts)
 	if err != nil {
+		fmt.Println("ERR: ", err)
 		ctx.SetStatusCode(http.StatusConflict)
 		msg := models.Message{
 			Text: "Parent post was created in another thread",

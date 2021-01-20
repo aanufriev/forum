@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aanufriev/forum/internal/pkg/forum"
@@ -174,76 +175,40 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 		}
 	}
 
-	query := "INSERT INTO posts (author, msg, parent, thread, forum, created) VALUES "
-	queryUsers := "INSERT INTO forum_user (nickname, forum_slug) VALUES "
+	query := `INSERT INTO posts(author, created, forum, msg, parent, thread) VALUES `
+	var args []interface{}
 	created := strfmt.DateTime(time.Now())
-	for idx := range posts {
-		posts[idx].Forum = forum
-		posts[idx].Thread = threadID
-		posts[idx].Created = created
 
-		query += fmt.Sprintf(
-			"('%v', '%v', %v, %v, '%v', '%v'),",
-			posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
+	for i, post := range posts {
+		value := fmt.Sprintf(
+			"($%d, $%d, $%d, $%d, $%d, $%d),",
+			i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6,
 		)
 
-		queryUsers += fmt.Sprintf(
-			"('%v', '%v'),",
-			posts[idx].Author, forum,
-		)
-
-		// err := f.db.QueryRow(`
-		// 	INSERT INTO posts (author, msg, parent, thread, forum, created)
-		// 	VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-		// 	posts[idx].Author, posts[idx].Message, posts[idx].Parent, posts[idx].Thread, posts[idx].Forum, posts[idx].Created,
-		// ).Scan(&posts[idx].ID)
-
-		// if err != nil {
-		// 	return nil, err
-		// }
+		query += value
+		args = append(args, post.Author, created, forum, post.Message, post.Parent, threadID)
 	}
 
-	query = query[:len(query)-1]
-	query += " RETURNING id"
+	query = strings.TrimSuffix(query, ",")
+	query += ` RETURNING id, author, created, forum, msg, parent, thread`
 
-	queryUsers = queryUsers[:len(queryUsers)-1]
-	queryUsers += " ON CONFLICT DO NOTHING"
-
-	rows, err := f.db.Query(query)
+	rows, err := f.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	idx := 0
-	// for idx := range posts {
+	var insertedPosts []models.Post
 	for rows.Next() {
-		// if !rows.Next() {
-		// 	break
-		// }
-		if err := rows.Scan(&posts[idx].ID); err != nil {
+		var p models.Post
+		err := rows.Scan(&p.ID, &p.Author, &p.Created, &p.Forum, &p.Message, &p.Parent, &p.Thread)
+		if err != nil {
 			return nil, err
 		}
-		idx++
+		insertedPosts = append(insertedPosts, p)
 	}
 
-	fmt.Printf("LEN POSTS: %v. LEN ROWS: %v\n", len(posts), idx)
-
-	_, err = f.db.Exec(queryUsers)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = f.db.Exec(
-		"UPDATE forums SET post_count = post_count + $1 WHERE slug = $2",
-		len(posts), forum,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return posts, nil
+	return insertedPosts, nil
 }
 
 func (f ForumRepository) GetThreadByID(id int) (models.Thread, error) {
