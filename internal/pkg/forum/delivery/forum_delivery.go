@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/aanufriev/forum/configs"
 	"github.com/aanufriev/forum/internal/pkg/forum"
@@ -224,6 +225,7 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 	for _, post := range posts {
 		_, err = f.userUsecase.CheckIfUserExists(post.Author)
 		if err != nil {
+			fmt.Printf("%v CHECK USER ERR: %v", time.Now().Format("02.01.2006 15:04:05"), err)
 			msg := models.Message{
 				Text: fmt.Sprintf("Can't find post author by nickname: %v", post.Author),
 			}
@@ -240,7 +242,7 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 
 	posts, err = f.forumUsecase.CreatePosts(slugOrID, posts)
 	if err != nil {
-		fmt.Println("ERR: ", err)
+		fmt.Printf("%v CREATE POSTS ERR: %v", time.Now().Format("02.01.2006 15:04:05"), err)
 		ctx.SetStatusCode(http.StatusConflict)
 		msg := models.Message{
 			Text: "Parent post was created in another thread",
