@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"log"
 
 	"github.com/aanufriev/forum/configs"
@@ -11,20 +12,18 @@ import (
 	userRepository "github.com/aanufriev/forum/internal/pkg/user/repository"
 	userUsecase "github.com/aanufriev/forum/internal/pkg/user/usecase"
 	"github.com/buaazp/fasthttprouter"
-	"github.com/jackc/pgx"
 	"github.com/valyala/fasthttp"
+
+	_ "github.com/lib/pq"
 )
 
 func StartApiServer() {
-	db, err := pgx.NewConnPool(pgx.ConnPoolConfig{
-		ConnConfig: pgx.ConnConfig{
-			User:     "docker",
-			Password: "docker",
-			Port:     5432,
-			Database: "forum",
-		},
-		MaxConnections: 10000,
-	})
+	db, err := sql.Open(configs.Postgres, configs.DataSourceNamePostgres)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	err = db.Ping()
 
 	if err != nil {
 		log.Fatal(err)

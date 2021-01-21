@@ -120,14 +120,6 @@ CREATE INDEX index_forum_user_nickname ON forum_user (nickname);
 cluster forum_user USING index_forum_user;
 
 
-TRUNCATE TABLE forum_user CASCADE;
-TRUNCATE TABLE posts CASCADE;
-TRUNCATE TABLE votes CASCADE;
-TRUNCATE TABLE threads CASCADE;
-TRUNCATE TABLE forums CASCADE;
-TRUNCATE TABLE users CASCADE;
-
-
 CREATE OR REPLACE FUNCTION insert_thread_votes()
     RETURNS TRIGGER AS
 $insert_thread_votes$
