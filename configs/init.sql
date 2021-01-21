@@ -80,11 +80,7 @@ CREATE UNLOGGED TABLE posts(
     msg TEXT NOT NULL,
     parent INT NOT NULL,
     thread INT NOT NULL,
-    path BIGINT[],
-
-    FOREIGN KEY (forum) REFERENCES forums (slug) ON DELETE CASCADE,
-    FOREIGN KEY (author) REFERENCES users (nickname) ON DELETE CASCADE,
-    FOREIGN KEY (thread) REFERENCES threads (id) ON DELETE CASCADE
+    path BIGINT[]
 );
 
 CREATE INDEX index_posts_id on posts (id);
@@ -109,8 +105,7 @@ CREATE UNIQUE INDEX index_votes_user_thread ON thread_vote (thread_id, nickname)
 CREATE UNLOGGED TABLE forum_user(
     forum_slug CITEXT NOT NULL,
     nickname CITEXT NOT NULL,
-    FOREIGN KEY (forum_slug) REFERENCES forums (slug) ON DELETE CASCADE,
-    FOREIGN KEY (nickname) REFERENCES users (nickname) ON DELETE CASCADE,
+
     UNIQUE (forum_slug, nickname)
 );
 
@@ -169,11 +164,8 @@ CREATE OR REPLACE FUNCTION set_post_path()
     RETURNS TRIGGER AS
 $set_post_path$
 BEGIN
-    IF (new.parent = 0) THEN
-        new.path = new.path || new.id;
-    ELSE
-        new.path = (SELECT path FROM posts WHERE id = new.parent) || new.id;
-    END IF;
+    new.path = (SELECT path FROM posts WHERE id = new.parent) || new.id;
+    UPDATE forums SET post_count = post_count + 1 WHERE slug = new.forum;
     RETURN new;
 END;
 $set_post_path$ LANGUAGE plpgsql;
@@ -199,22 +191,6 @@ CREATE TRIGGER update_forum_threads
     ON threads
     FOR EACH ROW
 EXECUTE PROCEDURE update_forum_threads();
-
-
-CREATE OR REPLACE FUNCTION update_forum_posts()
-    RETURNS TRIGGER AS
-$update_forum_posts$
-BEGIN
-    UPDATE forums SET post_count = post_count + 1 WHERE slug = new.forum;
-    RETURN new;
-END;
-$update_forum_posts$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_forum_posts
-    BEFORE INSERT
-    ON posts
-    FOR EACH ROW
-EXECUTE PROCEDURE update_forum_posts();
 
 
 CREATE OR REPLACE FUNCTION add_forum_user()
