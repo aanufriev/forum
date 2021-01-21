@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aanufriev/forum/internal/pkg/forum"
@@ -174,22 +175,37 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 		}
 	}
 
+	query := `INSERT INTO posts(author, created, forum, msg, parent, thread) VALUES `
+	var args []interface{}
 	created := strfmt.DateTime(time.Now())
 
-	for idx := range posts {
-		posts[idx].Forum = forum
-		posts[idx].Thread = threadID
-		posts[idx].Created = created
+	for i, post := range posts {
+		value := fmt.Sprintf(
+			"($%d, $%d, $%d, $%d, $%d, $%d),",
+			i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6,
+		)
 
-		err = f.db.QueryRow(
-			`INSERT INTO posts(author, created, forum, msg, parent, thread)
-			VALUES($1, $2, $3, $4, $5, $6) RETURNING id`,
-			posts[idx].Author, created, forum, posts[idx].Message, posts[idx].Parent, threadID,
-		).Scan(&posts[idx].ID)
+		query += value
+		args = append(args, post.Author, created, forum, post.Message, post.Parent, threadID)
+	}
 
+	query = strings.TrimSuffix(query, ",")
+	query += ` RETURNING id`
+
+	rows, err := f.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var idx int
+	for rows.Next() {
+		err := rows.Scan(&posts[idx].ID)
 		if err != nil {
 			return nil, err
 		}
+
+		idx++
 	}
 
 	return posts, nil
