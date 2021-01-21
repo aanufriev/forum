@@ -104,7 +104,7 @@ CREATE UNLOGGED TABLE thread_vote(
     UNIQUE (thread_id, nickname)
 );
 
-CREATR UNIQUE INDEX index_votes_user_thread ON thread_vote (thread_id, nickname);
+CREATE UNIQUE INDEX index_votes_user_thread ON thread_vote (thread_id, nickname);
 
 
 CREATE UNLOGGED TABLE forum_user(
