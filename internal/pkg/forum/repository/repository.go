@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/aanufriev/forum/internal/pkg/forum"
@@ -169,7 +168,7 @@ func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) 
 		args = append(args, post.Author, created, thread.Forum, post.Message, post.Parent, thread.ID)
 	}
 
-	query = strings.TrimSuffix(query, ",")
+	query = query[:len(query)-1]
 	query += ` RETURNING id`
 
 	rows, err := f.db.Query(query, args...)
