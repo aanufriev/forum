@@ -25,8 +25,8 @@ DROP TRIGGER IF EXISTS add_forum_user_new_post ON posts;
 
 CREATE UNLOGGED TABLE users(
     id SERIAL PRIMARY KEY,
-    nickname CITEXT COLLATE "C" UNIQUE NOT NULL,
-    fullname CITEXT COLLATE "C" NOT NULL,
+    nickname CITEXT UNIQUE NOT NULL,
+    fullname CITEXT NOT NULL,
     about TEXT NOT NULL,
     email CITEXT UNIQUE NOT NULL
 );
@@ -38,10 +38,10 @@ CREATE INDEX index_users_email_hash ON users USING HASH (email);
 CREATE UNLOGGED TABLE forums(
     id SERIAL PRIMARY KEY,
     title TEXT NOT NULL,
-    user_nickname CITEXT COLLATE "C" NOT NULL,
+    user_nickname CITEXT NOT NULL,
     post_count INT DEFAULT 0,
     thread_count INT DEFAULT 0,
-    slug CITEXT COLLATE "C" UNIQUE NOT NULL,
+    slug CITEXT UNIQUE NOT NULL,
 
     FOREIGN KEY (user_nickname) REFERENCES users (nickname)
 );
@@ -53,12 +53,12 @@ CREATE INDEX index_forums_users_foreign ON forums (user_nickname);
 
 CREATE UNLOGGED TABLE threads(
     id SERIAL PRIMARY KEY,
-    author CITEXT COLLATE "C" NOT NULL,
+    author CITEXT NOT NULL,
     created TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    forum CITEXT COLLATE "C" NOT NULL,
+    forum CITEXT NOT NULL,
     msg TEXT NOT NULL,
-    slug CITEXT COLLATE "C" UNIQUE,
-    title CITEXT COLLATE "C" NOT NULL,
+    slug CITEXT UNIQUE,
+    title CITEXT NOT NULL,
     votes INT DEFAULT 0,
 
     FOREIGN KEY (forum) REFERENCES forums (slug) ON DELETE CASCADE,
@@ -73,9 +73,9 @@ CREATE INDEX index_threads_id_hash ON threads USING HASH (id);
 
 CREATE UNLOGGED TABLE posts(
     id BIGSERIAL PRIMARY KEY,
-    author CITEXT COLLATE "C" NOT NULL,
+    author CITEXT NOT NULL,
     created TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    forum CITEXT COLLATE "C" NOT NULL,
+    forum CITEXT NOT NULL,
     isEdited BOOLEAN DEFAULT FALSE,
     msg TEXT NOT NULL,
     parent INT NOT NULL,
@@ -97,7 +97,7 @@ CREATE INDEX index_posts_path1_path on posts ((path[1]), path);
 CREATE UNLOGGED TABLE thread_vote(
     thread_id INT NOT NULL,
     vote INT NOT NULL,
-    nickname CITEXT COLLATE "C" NOT NULL,
+    nickname CITEXT NOT NULL,
 
     FOREIGN KEY (thread_id) REFERENCES threads (id),
     FOREIGN KEY (nickname) REFERENCES users (nickname),
@@ -108,8 +108,8 @@ CREATR UNIQUE INDEX index_votes_user_thread ON thread_vote (thread_id, nickname)
 
 
 CREATE UNLOGGED TABLE forum_user(
-    forum_slug CITEXT COLLATE "C" NOT NULL,
-    nickname CITEXT COLLATE "C" NOT NULL,
+    forum_slug CITEXT NOT NULL,
+    nickname CITEXT NOT NULL,
     FOREIGN KEY (forum_slug) REFERENCES forums (slug) ON DELETE CASCADE,
     FOREIGN KEY (nickname) REFERENCES users (nickname) ON DELETE CASCADE,
     UNIQUE (forum_slug, nickname)
