@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/aanufriev/forum/internal/pkg/forum"
