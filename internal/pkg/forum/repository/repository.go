@@ -180,6 +180,9 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 	created := strfmt.DateTime(time.Now())
 
 	for i, post := range posts {
+		posts[i].Forum = forum
+		posts[i].Thread = threadID
+		posts[i].Created = created
 		value := fmt.Sprintf(
 			"($%d, $%d, $%d, $%d, $%d, $%d),",
 			i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6,

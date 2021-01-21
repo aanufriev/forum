@@ -14,8 +14,8 @@ DROP FUNCTION IF EXISTS update_forum_threads();
 DROP FUNCTION IF EXISTS update_forum_posts();
 DROP FUNCTION IF EXISTS add_forum_user();
 
-DROP TRIGGER IF EXISTS insert_thread_votes ON votes;
-DROP TRIGGER IF EXISTS update_thread_votes ON votes;
+DROP TRIGGER IF EXISTS insert_thread_votes ON thread_vote;
+DROP TRIGGER IF EXISTS update_thread_votes ON thread_vote;
 DROP TRIGGER IF EXISTS set_post_path ON posts;
 DROP TRIGGER IF EXISTS update_forum_threads ON threads;
 DROP TRIGGER IF EXISTS update_forum_posts ON posts;
