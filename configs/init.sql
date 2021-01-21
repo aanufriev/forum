@@ -89,7 +89,6 @@ CREATE UNLOGGED TABLE posts(
 
 CREATE INDEX index_posts_id on posts (id);
 CREATE INDEX index_posts_thread_id on posts (thread, id);
-CREATE INDEX index_posts_thread_path on posts (thread, path);
 CREATE INDEX index_posts_thread_parent_path on posts (thread, parent, path);
 CREATE INDEX index_posts_path1_path on posts ((path[1]), path);
 

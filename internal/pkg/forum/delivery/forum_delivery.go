@@ -198,7 +198,7 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 
 	slugOrID := ctx.UserValue("slug_or_id").(string)
 
-	err := f.forumUsecase.CheckThread(slugOrID)
+	thread, err := f.forumUsecase.GetThreadIDAndForum(slugOrID)
 	if err != nil {
 		ctx.SetStatusCode(http.StatusNotFound)
 		msg := models.Message{
@@ -240,7 +240,7 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	posts, err = f.forumUsecase.CreatePosts(slugOrID, posts)
+	posts, err = f.forumUsecase.CreatePosts(thread, posts)
 	if err != nil {
 		fmt.Printf("%v CREATE POSTS ERR: %v", time.Now().Format("02.01.2006 15:04:05"), err)
 		ctx.SetStatusCode(http.StatusConflict)

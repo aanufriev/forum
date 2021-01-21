@@ -8,7 +8,7 @@ type Usecase interface {
 	CreateThread(model *models.Thread) error
 	CheckForum(slug string) (string, error)
 	GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error)
-	CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error)
+	CreatePosts(thread models.Thread, posts []models.Post) ([]models.Post, error)
 	GetThread(slugOrID string) (models.Thread, error)
 	Vote(vote models.Vote) (models.Thread, error)
 	GetPosts(slugOrID string, limit int, sort string, order string, since string) ([]models.Post, error)
@@ -19,4 +19,5 @@ type Usecase interface {
 	ClearService() error
 	GetServiceInfo() (models.ServiceInfo, error)
 	CheckThread(slugOrID string) error
+	GetThreadIDAndForum(slugOrID string) (models.Thread, error)
 }

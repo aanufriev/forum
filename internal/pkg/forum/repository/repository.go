@@ -135,33 +135,10 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 	return threads, nil
 }
 
-func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]models.Post, error) {
-	var (
-		forum    string
-		threadID int
-		err      error
-	)
-
-	threadID, err = strconv.Atoi(slugOrID)
-	if err != nil {
-		err = f.db.QueryRow(`
-			SELECT forum, id FROM threads WHERE slug = $1`,
-			slugOrID,
-		).Scan(&forum, &threadID)
-	} else {
-		err = f.db.QueryRow(
-			"SELECT forum FROM threads WHERE id = $1",
-			threadID,
-		).Scan(&forum)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
+func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) ([]models.Post, error) {
 	if len(posts) > 0 && posts[0].Parent != 0 {
 		var parentThread int
-		err = f.db.QueryRow(
+		err := f.db.QueryRow(
 			"SELECT thread FROM posts WHERE id = $1",
 			posts[0].Parent,
 		).Scan(&parentThread)
@@ -170,7 +147,7 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 			return nil, err
 		}
 
-		if parentThread != threadID {
+		if parentThread != thread.ID {
 			return nil, fmt.Errorf("wrong parent")
 		}
 	}
@@ -180,8 +157,8 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 	created := strfmt.DateTime(time.Now())
 
 	for i, post := range posts {
-		posts[i].Forum = forum
-		posts[i].Thread = threadID
+		posts[i].Forum = thread.Forum
+		posts[i].Thread = thread.ID
 		posts[i].Created = created
 		value := fmt.Sprintf(
 			"($%d, $%d, $%d, $%d, $%d, $%d),",
@@ -189,7 +166,7 @@ func (f ForumRepository) CreatePosts(slugOrID string, posts []models.Post) ([]mo
 		)
 
 		query += value
-		args = append(args, post.Author, created, forum, post.Message, post.Parent, threadID)
+		args = append(args, post.Author, created, thread.Forum, post.Message, post.Parent, thread.ID)
 	}
 
 	query = strings.TrimSuffix(query, ",")
@@ -735,4 +712,29 @@ func (f ForumRepository) CheckThreadBySlug(slug string) (int, error) {
 	}
 
 	return id, nil
+}
+
+func (f ForumRepository) GetThreadIDAndForum(slugOrID string) (models.Thread, error) {
+	var (
+		thread models.Thread
+		err    error
+	)
+	thread.ID, err = strconv.Atoi(slugOrID)
+	if err != nil {
+		err = f.db.QueryRow(`
+			SELECT forum, id FROM threads WHERE slug = $1`,
+			slugOrID,
+		).Scan(&thread.Forum, &thread.ID)
+	} else {
+		err = f.db.QueryRow(
+			"SELECT forum FROM threads WHERE id = $1",
+			thread.ID,
+		).Scan(&thread.Forum)
+	}
+
+	if err != nil {
+		return models.Thread{}, err
+	}
+
+	return thread, nil
 }
