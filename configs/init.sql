@@ -74,7 +74,7 @@ CREATE INDEX index_threads_id_hash ON threads USING HASH (id);
 CREATE UNLOGGED TABLE posts(
     id BIGSERIAL PRIMARY KEY,
     author CITEXT NOT NULL,
-    created TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    created TIMESTAMP WITH TIME ZONE,
     forum CITEXT NOT NULL,
     isEdited BOOLEAN DEFAULT FALSE,
     msg TEXT NOT NULL,

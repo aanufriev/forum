@@ -135,7 +135,7 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 }
 
 func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) error {
-	if len(posts) > 0 && posts[0].Parent != 0 {
+	if posts[0].Parent != 0 {
 		var parentThread int
 		err := f.db.QueryRow(
 			"SELECT thread FROM posts WHERE id = $1",
@@ -159,12 +159,12 @@ func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) 
 		posts[i].Forum = thread.Forum
 		posts[i].Thread = thread.ID
 		posts[i].Created = created
-		value := fmt.Sprintf(
+
+		query += fmt.Sprintf(
 			"($%d, $%d, $%d, $%d, $%d, $%d),",
 			i*6+1, i*6+2, i*6+3, i*6+4, i*6+5, i*6+6,
 		)
 
-		query += value
 		args = append(args, post.Author, created, thread.Forum, post.Message, post.Parent, thread.ID)
 	}
 

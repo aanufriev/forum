@@ -3,7 +3,6 @@ package server
 import (
 	"database/sql"
 	"log"
-	"time"
 
 	"github.com/aanufriev/forum/configs"
 	forumDelivery "github.com/aanufriev/forum/internal/pkg/forum/delivery"
@@ -29,10 +28,6 @@ func StartApiServer() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	db.SetMaxOpenConns(100)
-	db.SetMaxIdleConns(50)
-	db.SetConnMaxLifetime(15 * time.Minute)
 
 	userRepository := userRepository.New(db)
 	userUsecase := userUsecase.New(userRepository)
