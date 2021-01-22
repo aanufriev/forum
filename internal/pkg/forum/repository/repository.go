@@ -147,7 +147,7 @@ func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) 
 		}
 
 		if parentThread != thread.ID {
-			return fmt.Errorf("wrong parent")
+			return forum.ErrWrongParent
 		}
 	}
 

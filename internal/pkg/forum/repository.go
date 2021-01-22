@@ -9,6 +9,7 @@ import (
 var (
 	ErrForumDoesntExists = fmt.Errorf("forum not exists")
 	ErrDataConflict      = fmt.Errorf("data conflict")
+	ErrWrongParent       = fmt.Errorf("wrong parent")
 )
 
 type Repository interface {

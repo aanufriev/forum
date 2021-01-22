@@ -106,7 +106,8 @@ CREATE UNLOGGED TABLE forum_user(
     forum_slug CITEXT NOT NULL,
     nickname CITEXT NOT NULL,
 
-    UNIQUE (forum_slug, nickname)
+    UNIQUE (forum_slug, nickname),
+    FOREIGN KEY (nickname) REFERENCES users (nickname)
 );
 
 CREATE INDEX index_forum_user ON forum_user (forum_slug, nickname);
