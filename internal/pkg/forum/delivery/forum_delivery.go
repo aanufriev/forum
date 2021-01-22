@@ -240,7 +240,7 @@ func (f ForumDelivery) CreatePosts(ctx *fasthttp.RequestCtx) {
 		}
 	}
 
-	posts, err = f.forumUsecase.CreatePosts(thread, posts)
+	err = f.forumUsecase.CreatePosts(thread, posts)
 	if err != nil {
 		fmt.Printf("%v CREATE POSTS ERR: %v\n", time.Now().Format("02.01.2006 15:04:05"), err)
 		ctx.SetStatusCode(http.StatusConflict)

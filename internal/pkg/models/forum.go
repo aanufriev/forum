@@ -30,7 +30,6 @@ type Post struct {
 	Message  string          `json:"message"`
 	Parent   int             `json:"parent,omitempty"`
 	Forum    string          `json:"forum"`
-	Slug     string          `json:"slug"`
 	Thread   int             `json:"thread"`
 	Created  strfmt.DateTime `json:"created,omitempty"`
 	IsEdited bool            `json:"isEdited"`

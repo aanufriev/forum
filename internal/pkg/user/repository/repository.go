@@ -99,10 +99,7 @@ func (u UserRepository) Update(model models.User) (models.User, error) {
 	)
 
 	if err != nil {
-		if err != sql.ErrConnDone {
-			return models.User{}, user.ErrDataConflict
-		}
-		return models.User{}, err
+		return models.User{}, user.ErrDataConflict
 	}
 
 	return model, nil

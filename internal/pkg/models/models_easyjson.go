@@ -577,8 +577,6 @@ func easyjsonD2b7633eDecodeGithubComAanufrievForumInternalPkgModels5(in *jlexer.
 			out.Parent = int(in.Int())
 		case "forum":
 			out.Forum = string(in.String())
-		case "slug":
-			out.Slug = string(in.String())
 		case "thread":
 			out.Thread = int(in.Int())
 		case "created":
@@ -625,11 +623,6 @@ func easyjsonD2b7633eEncodeGithubComAanufrievForumInternalPkgModels5(out *jwrite
 		const prefix string = ",\"forum\":"
 		out.RawString(prefix)
 		out.String(string(in.Forum))
-	}
-	{
-		const prefix string = ",\"slug\":"
-		out.RawString(prefix)
-		out.String(string(in.Slug))
 	}
 	{
 		const prefix string = ",\"thread\":"

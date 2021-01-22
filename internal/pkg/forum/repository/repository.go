@@ -134,7 +134,7 @@ func (f ForumRepository) GetThreads(slug string, limit string, since string, des
 	return threads, nil
 }
 
-func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) ([]models.Post, error) {
+func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) error {
 	if len(posts) > 0 && posts[0].Parent != 0 {
 		var parentThread int
 		err := f.db.QueryRow(
@@ -143,11 +143,11 @@ func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) 
 		).Scan(&parentThread)
 
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("couldn't get thread id from posts: %w", err)
 		}
 
 		if parentThread != thread.ID {
-			return nil, fmt.Errorf("wrong parent")
+			return fmt.Errorf("wrong parent")
 		}
 	}
 
@@ -173,7 +173,7 @@ func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) 
 
 	rows, err := f.db.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("couldn't insert posts: %w", err)
 	}
 	defer rows.Close()
 
@@ -181,13 +181,13 @@ func (f ForumRepository) CreatePosts(thread models.Thread, posts []models.Post) 
 	for rows.Next() {
 		err := rows.Scan(&posts[idx].ID)
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("couldn't scan post id: %w", err)
 		}
 
 		idx++
 	}
 
-	return posts, nil
+	return nil
 }
 
 func (f ForumRepository) GetThreadByID(id int) (models.Thread, error) {

@@ -17,7 +17,7 @@ type Repository interface {
 	CreateThread(model *models.Thread) error
 	CheckForum(slug string) (string, error)
 	GetThreads(slug string, limit string, since string, desc string) ([]models.Thread, error)
-	CreatePosts(thread models.Thread, posts []models.Post) ([]models.Post, error)
+	CreatePosts(thread models.Thread, posts []models.Post) error
 	GetThreadByID(id int) (models.Thread, error)
 	GetThreadBySlug(slug string) (models.Thread, error)
 	Vote(vote models.Vote) (models.Thread, error)

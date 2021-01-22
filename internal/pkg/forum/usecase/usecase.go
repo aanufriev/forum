@@ -37,7 +37,7 @@ func (f ForumUsecase) GetThreads(slug string, limit string, since string, desc s
 	return f.forumRepository.GetThreads(slug, limit, since, desc)
 }
 
-func (f ForumUsecase) CreatePosts(thread models.Thread, posts []models.Post) ([]models.Post, error) {
+func (f ForumUsecase) CreatePosts(thread models.Thread, posts []models.Post) error {
 	return f.forumRepository.CreatePosts(thread, posts)
 }
 
